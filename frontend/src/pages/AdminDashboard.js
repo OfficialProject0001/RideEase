@@ -1,44 +1,31 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-function AdminDashboard() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (username === 'Rohit02' && password === 'Rohit2580@') {
-      setIsLoggedIn(true); setError('');
-    } else {
-      setError('Invalid Admin ID or Password!');
-    }
-  };
-
-  if (!isLoggedIn) {
-    return (
-      <div className="d-flex justify-content-center mt-5">
-        <div className="card bg-black p-5 shadow border-danger" style={{ width: '400px', borderTop: '5px solid red' }}>
-          <h2 className="text-danger text-center mb-4">Admin Access</h2>
-          {error && <div className="alert alert-danger">{error}</div>}
-          <form onSubmit={handleLogin}>
-            <input type="text" className="form-control bg-dark text-white mb-3" placeholder="Admin ID" onChange={(e)=>setUsername(e.target.value)} required />
-            <input type="password" className="form-control bg-dark text-white mb-4" placeholder="Password" onChange={(e)=>setPassword(e.target.value)} required />
-            <button className="btn btn-danger w-100 fw-bold">Login</button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
+const AdminDashboard = () => {
   return (
-    <div className="p-4 text-white">
-      <h2 className="text-danger mb-4">Welcome, Rohit!</h2>
-      <div className="row text-center">
-        <div className="col-md-3"><div className="card bg-black border-danger p-4 shadow"><h5 className="text-muted">Total Rides</h5><h2 className="text-light">8,500</h2></div></div>
-        <div className="col-md-3"><div className="card bg-black border-danger p-4 shadow"><h5 className="text-muted">Revenue</h5><h2 className="text-success">₹ 4.5 Lakh</h2></div></div>
+    <div className="container-fluid py-4">
+      <h1 className="text-warning fw-bold mb-4">Admin Master Console</h1>
+      
+      <div className="row g-4 mb-5">
+        <div className="col-md-3"><div className="glass-card p-4 text-center"><h5>Total Users</h5><h3>1,450</h3></div></div>
+        <div className="col-md-3"><div className="glass-card p-4 text-center"><h5>Active Captains</h5><h3>320</h3></div></div>
+        <div className="col-md-3"><div className="glass-card p-4 text-center"><h5>Live Rides</h5><h3 className="text-success">24</h3></div></div>
+        <div className="col-md-3"><div className="glass-card p-4 text-center"><h5>Revenue</h5><h3 className="text-warning">₹8.4L</h3></div></div>
+      </div>
+
+      <div className="glass-card p-4">
+        <h4 className="mb-4">Recent Captain Registrations</h4>
+        <table className="table table-dark table-hover border-secondary">
+          <thead>
+            <tr><th>Name</th><th>Vehicle</th><th>License Number</th><th>Status</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Rahul Sharma</td><td>Activa 6G</td><td>MH-15-2023-XXXX</td><td><span className="badge bg-warning">Pending</span></td><td><button className="btn btn-sm btn-success">Approve</button></td></tr>
+            <tr><td>Vikram Singh</td><td>Royal Enfield</td><td>MH-12-2022-XXXX</td><td><span className="badge bg-success">Approved</span></td><td><button className="btn btn-sm btn-danger">Block</button></td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   );
-}
+};
+
 export default AdminDashboard;
