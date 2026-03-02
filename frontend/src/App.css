@@ -1,51 +1,48 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&family=Poppins:wght@300;400;600&display=swap');
+
+:root {
+  --primary: #fbbf24; 
+  --royal: #1e40af;
+  --dark: #020617;
+  --glass: rgba(255, 255, 255, 0.05);
+}
 
 body {
-  margin: 0;
-  font-family: 'Poppins', sans-serif;
-  /* Dark Blue to Royal Blue Gradient */
-  background: linear-gradient(135deg, #020617 0%, #1e3a8a 100%); 
-  color: white;
-  min-height: 100vh;
-  overflow-x: hidden;
+  background: radial-gradient(circle at top right, #1e3a8a, #020617);
+  color: white; font-family: 'Poppins', sans-serif; overflow-x: hidden;
 }
 
-/* Glassmorphism Effect */
+/* --- PRE-LOADER BIKE ANIMATION --- */
+.loader-wrap {
+  position: fixed; inset: 0; background: var(--dark); z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeOut 1s forwards 3.5s;
+}
+.bike-img {
+  font-size: 4rem; position: absolute; left: -10%;
+  animation: bikeDrive 3s ease-in-out forwards;
+}
+@keyframes bikeDrive {
+  0% { left: -10%; }
+  50% { left: 45%; transform: scale(1.2); }
+  100% { left: 110%; }
+}
+@keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+
+/* --- PREMIUM UI COMPONENTS --- */
 .glass-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  background: var(--glass); backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 24px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4); transition: 0.3s;
 }
+.glass-card:hover { border-color: var(--primary); transform: translateY(-5px); }
 
-/* Premium Yellow Buttons */
-.btn-premium {
-  background: linear-gradient(45deg, #fbbf24, #f59e0b);
-  color: #000;
-  border: none;
-  border-radius: 30px;
-  padding: 12px 25px;
-  font-weight: 700;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+.btn-ride {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  border: none; border-radius: 50px; font-weight: 700; color: #000;
+  padding: 14px 32px; text-transform: uppercase; letter-spacing: 1px;
 }
+.btn-ride:hover { box-shadow: 0 0 20px rgba(251, 191, 36, 0.6); transform: scale(1.05); }
 
-.btn-premium:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.6);
-  color: #000;
-}
-
-.premium-input {
-  background: rgba(0, 0, 0, 0.4) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
-  border-radius: 10px;
-}
-
-.premium-input:focus {
-  border-color: #fbbf24 !important;
-  box-shadow: 0 0 10px rgba(251, 191, 36, 0.3) !important;
-}
+.nav-link-custom { color: rgba(255,255,255,0.6); text-decoration: none; font-weight: 600; cursor: pointer; }
+.nav-link-custom.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
