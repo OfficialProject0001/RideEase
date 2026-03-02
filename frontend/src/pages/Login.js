@@ -3,91 +3,62 @@ import { useNavigate } from 'react-router-dom';
 
 function Login() {
   const [phone, setPhone] = useState('');
+  const [step, setStep] = useState(1);
+  const [role, setRole] = useState('rider');
   const [otp, setOtp] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState(null);
-  const [step, setStep] = useState(1); // Step 1: Phone, Step 2: OTP
-  const [role, setRole] = useState('rider'); // 'rider' ya 'captain'
-  
   const navigate = useNavigate();
 
   const handleSendOtp = (e) => {
     e.preventDefault();
-    if (phone.length !== 10) {
-      alert("Boss, please enter a valid 10-digit number!");
-      return;
-    }
-    // 4-digit random OTP generate karna
-    const randomOtp = Math.floor(1000 + Math.random() * 9000);
-    setGeneratedOtp(randomOtp);
-    setStep(2);
+    if(phone.length === 10) setStep(2);
+    else alert("Please enter a valid 10-digit number");
   };
 
-  const handleVerifyOtp = (e) => {
+  const handleVerify = (e) => {
     e.preventDefault();
-    if (otp === generatedOtp.toString()) {
-      // OTP sahi hai, ab role ke hisaab se page par bhejo
-      if (role === 'rider') {
-        navigate('/book');
-      } else {
-        navigate('/driver');
-      }
+    if(otp === '1234') { // Demo static OTP
+      navigate(role === 'rider' ? '/book' : '/driver');
     } else {
-      alert("Galat OTP! Dhyan se dekhiye aur wapas type kijiye.");
+      alert("Demo OTP is 1234");
     }
   };
 
   return (
-    <div className="min-vh-100 d-flex justify-content-center align-items-center bg-dark" style={{ background: 'radial-gradient(circle, #2a2a2a, #000000)' }}>
-      <div className="card bg-black p-4 shadow-lg" style={{ width: '400px', borderTop: '5px solid red', borderRadius: '15px' }}>
-        
+    <div className="d-flex justify-content-center align-items-center min-vh-100">
+      <div className="glass-card p-5" style={{ width: '450px', animation: 'fadeIn 1s ease-in-out' }}>
         <div className="text-center mb-4">
-          <h2 className="text-danger fw-bold">Ride<span className="text-white">Ease</span></h2>
-          <p className="text-muted">Login to start your journey</p>
+          <h1 className="fw-bold" style={{ color: '#fbbf24' }}>Ride<span className="text-white">Ease</span></h1>
+          <p className="text-light opacity-75">Premium Ride Experience</p>
         </div>
 
-        {/* --- STEP 1: ENTER PHONE NUMBER --- */}
-        {step === 1 && (
+        {step === 1 ? (
           <form onSubmit={handleSendOtp}>
-            <div className="mb-3 d-flex justify-content-center gap-3">
-              <div className="form-check">
-                <input className="form-check-input bg-dark border-danger" type="radio" name="role" id="rider" checked={role === 'rider'} onChange={() => setRole('rider')} />
-                <label className="form-check-label text-light" htmlFor="rider">Rider</label>
+            <div className="d-flex justify-content-center gap-4 mb-4">
+              <div className="form-check form-check-inline">
+                <input className="form-check-input" type="radio" name="role" checked={role === 'rider'} onChange={() => setRole('rider')} />
+                <label className="form-check-label text-light">Customer</label>
               </div>
-              <div className="form-check">
-                <input className="form-check-input bg-dark border-danger" type="radio" name="role" id="captain" checked={role === 'captain'} onChange={() => setRole('captain')} />
-                <label className="form-check-label text-light" htmlFor="captain">Captain</label>
-              </div>
-            </div>
-
-            <div className="mb-3">
-              <label className="text-light mb-1"><small>Phone Number</small></label>
-              <div className="input-group">
-                <span className="input-group-text bg-dark text-white border-secondary">+91</span>
-                <input type="number" className="form-control bg-dark text-white border-secondary" placeholder="9999999999" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+              <div className="form-check form-check-inline">
+                <input className="form-check-input" type="radio" name="role" checked={role === 'captain'} onChange={() => setRole('captain')} />
+                <label className="form-check-label text-light">Captain</label>
               </div>
             </div>
-            <button type="submit" className="btn btn-danger w-100 fw-bold mt-2">Get OTP</button>
-          </form>
-        )}
-
-        {/* --- STEP 2: VERIFY OTP --- */}
-        {step === 2 && (
-          <form onSubmit={handleVerifyOtp}>
-            {/* Website par hi OTP dikhane wala Magic Box */}
-            <div className="alert alert-success text-center fw-bold p-2 mb-4 border-success">
-              <small className="d-block text-dark">Demo SMS Received!</small>
-              Your RideEase OTP is: {generatedOtp}
-            </div>
-
             <div className="mb-4">
-              <label className="text-light mb-1"><small>Enter 4-digit OTP</small></label>
-              <input type="number" className="form-control bg-dark text-white border-danger text-center fs-4 letter-spacing-3" placeholder="----" value={otp} onChange={(e) => setOtp(e.target.value)} required />
+              <input type="number" className="form-control premium-input p-3" placeholder="Enter Phone Number" value={phone} onChange={(e)=>setPhone(e.target.value)} required />
             </div>
-            <button type="submit" className="btn btn-danger w-100 fw-bold">Verify & Login</button>
-            <button type="button" className="btn btn-link text-muted w-100 mt-2 text-decoration-none" onClick={() => setStep(1)}><small>Change Phone Number</small></button>
+            <button type="submit" className="btn btn-premium w-100 fs-5">Get OTP</button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerify}>
+            <div className="alert bg-success text-white text-center border-0 rounded-3 mb-4">
+              Demo SMS: Your RideEase OTP is <strong>1234</strong>
+            </div>
+            <div className="mb-4">
+              <input type="number" className="form-control premium-input p-3 text-center fs-3 letter-spacing-3" placeholder="----" value={otp} onChange={(e)=>setOtp(e.target.value)} required />
+            </div>
+            <button type="submit" className="btn btn-premium w-100 fs-5">Verify & Login</button>
           </form>
         )}
-
       </div>
     </div>
   );
