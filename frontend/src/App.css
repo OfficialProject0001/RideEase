@@ -1,43 +1,182 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --primary: #fbbf24; 
+  --primary: #fbbf24;
+  --primary-dark: #f59e0b;
   --dark-bg: #020617;
+  --dark-card: rgba(15, 23, 42, 0.7);
   --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --text-muted: rgba(255, 255, 255, 0.6);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
-  margin: 0; font-family: 'Poppins', sans-serif;
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
   background: radial-gradient(circle at top right, #1e3a8a, var(--dark-bg));
-  color: white; overflow-x: hidden; min-height: 100vh;
+  color: white;
+  overflow-x: hidden;
+  min-height: 100vh;
 }
 
-/* Glassmorphism Cards */
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 10px;
+}
+
+/* Glassmorphism Card */
 .glass-card {
-  background: var(--glass-bg); backdrop-filter: blur(15px);
-  border: 1px solid var(--glass-border); border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3); transition: 0.3s ease;
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  transition: all 0.3s ease;
 }
 
+.glass-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+}
+
+/* Sidebar Menu */
 .menu-btn {
-  background: transparent; border: none; color: rgba(255,255,255,0.7);
-  text-align: left; padding: 12px 20px; width: 100%; border-radius: 10px;
-  margin-bottom: 8px; transition: 0.2s; font-weight: 500;
-}
-.menu-btn:hover, .menu-btn.active {
-  background: rgba(251, 191, 36, 0.1); color: var(--primary); border-left: 4px solid var(--primary);
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  text-align: left;
+  padding: 12px 20px;
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  transition: 0.3s;
+  font-weight: 500;
 }
 
+.menu-btn:hover,
+.menu-btn.active {
+  background: rgba(251, 191, 36, 0.1);
+  color: var(--primary);
+  border-left: 4px solid var(--primary);
+}
+
+/* Premium Buttons */
 .btn-premium {
-  background: linear-gradient(45deg, #fbbf24, #f59e0b);
-  border: none; border-radius: 30px; color: #000; font-weight: 700;
-  padding: 12px 24px; box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+  background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+  border: none;
+  border-radius: 30px;
+  color: #000;
+  font-weight: 700;
+  padding: 12px 24px;
+  box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4);
+  transition: 0.3s ease;
 }
-.btn-premium:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(251, 191, 36, 0.6); }
 
-/* Map Simulation Background */
+.btn-premium:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(251, 191, 36, 0.6);
+}
+
+/* Form Controls */
+.form-control {
+  background: var(--dark-card);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: white;
+  transition: 0.3s ease;
+}
+
+.form-control::placeholder {
+  color: var(--text-muted);
+}
+
+.form-control:focus {
+  background: var(--dark-card);
+  border-color: var(--primary);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+  color: white;
+}
+
+/* Labels */
+.form-label {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* Helper Text */
+small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Dashboard Stats Cards */
+.stat-card {
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--dark-card);
+  border: 1px solid var(--glass-border);
+  transition: 0.3s;
+}
+
+.stat-card:hover {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: var(--primary);
+}
+
+/* Map Background */
 .map-bg {
   background: url('https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=2000&auto=format&fit=crop') center/cover;
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.3; z-index: -1;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.25;
+  z-index: -1;
+}
+
+/* Fade Animation */
+.fade-in {
+  animation: fadeIn 0.6s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading Text */
+.loading-text {
+  color: var(--primary);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .glass-card {
+    margin: 10px;
+    padding: 20px !important;
+  }
 }
