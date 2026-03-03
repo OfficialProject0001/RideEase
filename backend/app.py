@@ -67,4 +67,5 @@ def handle_ride_accept(accept_data):
 
 if __name__ == '__main__':
     print("🚀 Real RideEase Server Running with DB & Sockets!")
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    # Bas aage allow_unsafe_werkzeug=True add kar diya
+    socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
