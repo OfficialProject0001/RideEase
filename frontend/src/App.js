@@ -4,16 +4,26 @@ import { io } from 'socket.io-client';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
-// 🚀 Asli Server Connection
+// 🚀 Asli Server Connection (Render live link ya localhost daalein)
 const SERVER_URL = "http://localhost:5000"; 
 const socket = io(SERVER_URL);
+
+// ⚠️ APNI RAZORPAY KEY YAHAN BHI DAALEIN ⚠️
+const RAZORPAY_KEY_ID = "rzp_test_YOUR_KEY_HERE";
 
 export default function App() {
   const [role, setRole] = useState('landing'); 
   const [activeTab, setActiveTab] = useState('home');
   const [userData, setUserData] = useState(null);
 
-  // Jab App load ho, check karo kya user pehle se logged in hai?
+  // Load Razorpay Script Automatically
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
+
   useEffect(() => {
     const savedUser = localStorage.getItem('rideease_user');
     if (savedUser) {
@@ -30,31 +40,27 @@ export default function App() {
   };
 
   // --------------------------------------------------------
-  // 1. SMART LOGIN & REGISTRATION SYSTEM
+  // 1. SMART LOGIN PAGE
   // --------------------------------------------------------
   const LandingPage = () => {
     const [phone, setPhone] = useState('');
     const [step, setStep] = useState(1);
     const [name, setName] = useState('');
     const [city, setCity] = useState('');
-    const [selectedRole, setSelectedRole] = useState('customer'); // customer or captain
+    const [selectedRole, setSelectedRole] = useState('customer');
 
     const handleLogin = async (e) => {
       e.preventDefault();
-      if(phone.length !== 10) return alert("10 digit number daaliye Boss!");
-      
+      if(phone.length !== 10) return alert("Please enter 10 digits");
       try {
-        // DB me check karo
         const res = await axios.post(`${SERVER_URL}/api/login`, { phone });
-        if (res.data.isNew) {
-          setStep(2); // Naya user -> Form dikhao
-        } else {
-          // Purana user -> Seedha Login
+        if (res.data.isNew) setStep(2);
+        else {
           localStorage.setItem('rideease_user', JSON.stringify(res.data.user));
           setUserData(res.data.user);
           setRole(res.data.user.role);
         }
-      } catch (err) { console.error(err); alert("Server error!"); }
+      } catch (err) { alert("Server error!"); }
     };
 
     const handleRegister = async (e) => {
@@ -65,30 +71,29 @@ export default function App() {
         localStorage.setItem('rideease_user', JSON.stringify(newUser));
         setUserData(newUser);
         setRole(selectedRole);
-      } catch (err) { console.error(err); alert("Registration failed!"); }
+      } catch (err) { alert("Registration failed!"); }
     };
 
     return (
       <div className="container d-flex flex-column justify-content-center align-items-center min-vh-100 text-center">
          <h1 className="display-1 fw-bold mb-3"><span className="text-warning">Ride</span>Ease</h1>
-         
          <div className="glass-card p-5 mt-4" style={{width: '400px'}}>
             {step === 1 ? (
-              <form onSubmit={handleLogin} className="animate__animated animate__fadeIn">
+              <form onSubmit={handleLogin}>
                 <h4 className="mb-4">Login / Sign Up</h4>
                 <div className="d-flex justify-content-center gap-2 mb-4">
-                   <button type="button" onClick={()=>setSelectedRole('customer')} className={`btn btn-sm ${selectedRole === 'customer' ? 'btn-warning' : 'btn-outline-secondary'}`}>Customer</button>
-                   <button type="button" onClick={()=>setSelectedRole('captain')} className={`btn btn-sm ${selectedRole === 'captain' ? 'btn-warning' : 'btn-outline-secondary'}`}>Captain</button>
+                   <button type="button" onClick={()=>setSelectedRole('customer')} className={`btn btn-sm ${selectedRole === 'customer' ? 'btn-warning' : 'btn-outline-secondary text-white'}`}>Customer</button>
+                   <button type="button" onClick={()=>setSelectedRole('captain')} className={`btn btn-sm ${selectedRole === 'captain' ? 'btn-warning' : 'btn-outline-secondary text-white'}`}>Captain</button>
                    <button type="button" onClick={()=>setRole('admin')} className="btn btn-sm btn-outline-danger">Admin</button>
                 </div>
                 <input type="number" className="form-control bg-dark text-white p-3 mb-3" placeholder="Phone Number" value={phone} onChange={(e)=>setPhone(e.target.value)} required />
                 <button type="submit" className="btn btn-premium w-100 py-2">Continue</button>
               </form>
             ) : (
-              <form onSubmit={handleRegister} className="animate__animated animate__fadeIn">
+              <form onSubmit={handleRegister}>
                 <h4 className="mb-4 text-warning">Welcome New {selectedRole}!</h4>
                 <input type="text" className="form-control bg-dark text-white p-3 mb-3" placeholder="Full Name" value={name} onChange={(e)=>setName(e.target.value)} required />
-                <input type="text" className="form-control bg-dark text-white p-3 mb-4" placeholder="City" value={city} onChange={(e)=>setCity(e.target.value)} required />
+                <input type="text" className="form-control bg-dark text-white p-3 mb-4" placeholder="City (e.g., Virar)" value={city} onChange={(e)=>setCity(e.target.value)} required />
                 <button type="submit" className="btn btn-premium w-100 py-2">Create Account</button>
               </form>
             )}
@@ -98,13 +103,13 @@ export default function App() {
   };
 
   // --------------------------------------------------------
-  // 2. REAL-TIME CUSTOMER PANEL
+  // 2. CUSTOMER PANEL (WITH RAZORPAY)
   // --------------------------------------------------------
   const CustomerPanel = () => {
-    const [rideStatus, setRideStatus] = useState('idle'); // idle, searching, accepted
+    const [rideStatus, setRideStatus] = useState('idle');
     const [captainDetails, setCaptainDetails] = useState(null);
+    const fareAmount = 150; // Demo Fare
 
-    // Jab Captain accept karega toh ye chalega!
     useEffect(() => {
       socket.on('ride_confirmed', (data) => {
         setCaptainDetails(data);
@@ -113,16 +118,43 @@ export default function App() {
       return () => socket.off('ride_confirmed');
     }, []);
 
-    const bookRealRide = () => {
-      setRideStatus('searching');
-      const rideDetails = {
-        riderName: userData.name,
-        pickup: "Current Location",
-        drop: "City Center",
-        fare: "₹150",
-        phone: userData.phone
-      };
-      socket.emit('request_ride', rideDetails); // Server ko request bhej di!
+    const processPaymentAndBook = async () => {
+      try {
+        // 1. Create Order in Backend
+        const orderRes = await axios.post(`${SERVER_URL}/api/create-order`, { amount: fareAmount });
+        const order = orderRes.data;
+
+        // 2. Open Razorpay Window
+        const options = {
+          key: RAZORPAY_KEY_ID,
+          amount: order.amount,
+          currency: order.currency,
+          name: "RideEase Premium",
+          description: "Advance Ride Booking",
+          order_id: order.id,
+          handler: function (response) {
+            alert(`Payment Success! ID: ${response.razorpay_payment_id}`);
+            // 3. Emit Socket to find Drivers AFTER payment
+            setRideStatus('searching');
+            socket.emit('request_ride', {
+              riderName: userData.name,
+              pickup: `${userData.city} Railway Station`,
+              drop: "Destination XYZ",
+              fare: `₹${fareAmount}`,
+              phone: userData.phone
+            });
+          },
+          prefill: { name: userData.name, contact: userData.phone },
+          theme: { color: "#fbbf24" }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', function (response){ alert("Payment Failed: " + response.error.description); });
+        rzp.open();
+      } catch (error) {
+        console.error("Payment Init Error:", error);
+        alert("Failed to connect to payment gateway.");
+      }
     };
 
     return (
@@ -133,7 +165,7 @@ export default function App() {
             <div className="glass-card p-4 h-100 text-center">
               <img src={`https://ui-avatars.com/api/?name=${userData?.name}&background=fbbf24`} className="rounded-circle mb-3" width="70" alt="profile"/>
               <h5 className="text-warning">{userData?.name}</h5>
-              <p className="small text-white-50">{userData?.city}</p>
+              <p className="small text-white-50">{userData?.city}, Maharashtra</p>
               <button onClick={logout} className="btn btn-outline-danger w-100 mt-5">🚪 Logout</button>
             </div>
           </div>
@@ -143,9 +175,9 @@ export default function App() {
               {rideStatus === 'idle' && (
                 <>
                   <h4 className="fw-bold mb-4">Book a Ride</h4>
-                  <input className="form-control bg-dark text-white mb-3 p-3" value="Current Location" readOnly />
+                  <input className="form-control bg-dark text-white mb-3 p-3" value={`${userData?.city} Station`} readOnly />
                   <input className="form-control bg-dark text-white mb-4 p-3" placeholder="Enter Drop Destination" />
-                  <button onClick={bookRealRide} className="btn btn-premium w-100 fs-5">Confirm RideEase</button>
+                  <button onClick={processPaymentAndBook} className="btn btn-premium w-100 fs-5">Pay ₹{fareAmount} & Book Ride</button>
                 </>
               )}
 
@@ -153,17 +185,16 @@ export default function App() {
                 <div className="text-center py-4">
                   <div className="spinner-border text-warning mb-3"></div>
                   <h4 className="text-warning">Finding Captains...</h4>
-                  <p className="text-white-50">Request sent to nearby drivers.</p>
+                  <p className="text-white-50">Payment Confirmed. Locating drivers nearby.</p>
                 </div>
               )}
 
               {rideStatus === 'accepted' && (
                 <div className="text-center py-4 border border-success rounded bg-dark">
-                  <h4 className="text-success mb-3">Captain is on the way! 🏍️</h4>
+                  <h4 className="text-success mb-3">Captain is arriving! 🏍️</h4>
                   <h2 className="fw-bold">{captainDetails?.captainName}</h2>
                   <p className="text-warning fs-5">{captainDetails?.vehicle}</p>
-                  <p>Fare: {captainDetails?.fare}</p>
-                  <button onClick={() => setRideStatus('idle')} className="btn btn-success px-4 mt-2">Complete Ride</button>
+                  <button onClick={() => setRideStatus('idle')} className="btn btn-success px-4 mt-3">Complete Trip</button>
                 </div>
               )}
             </div>
@@ -174,21 +205,18 @@ export default function App() {
   };
 
   // --------------------------------------------------------
-  // 3. REAL-TIME CAPTAIN PANEL
+  // 3. CAPTAIN & ADMIN PANELS
   // --------------------------------------------------------
   const CaptainPanel = () => {
     const [incomingRide, setIncomingRide] = useState(null);
 
-    // Live Ride Request aayegi toh ye chalega!
     useEffect(() => {
-      socket.on('incoming_ride', (data) => {
-        setIncomingRide(data);
-      });
+      socket.on('incoming_ride', (data) => setIncomingRide(data));
       return () => socket.off('incoming_ride');
     }, []);
 
     const acceptRide = () => {
-      socket.emit('accept_ride', { ...incomingRide, captainName: userData.name, vehicle: "MH-15-AB-1234" });
+      socket.emit('accept_ride', { ...incomingRide, captainName: userData.name, vehicle: "MH-15-XY-9999" });
       setIncomingRide(null);
       alert("Ride Accepted! Navigation Started.");
     };
@@ -196,10 +224,9 @@ export default function App() {
     return (
       <div className="container-fluid min-vh-100 p-4 bg-dark">
         <div className="d-flex justify-content-between align-items-center mb-4 glass-card p-3">
-          <h4 className="text-warning mb-0">Welcome Captain {userData?.name}!</h4>
-          <button onClick={logout} className="btn btn-danger">Duty Off (Logout)</button>
+          <h4 className="text-warning mb-0">Duty Status: ONLINE</h4>
+          <button onClick={logout} className="btn btn-danger">Duty Off</button>
         </div>
-
         <div className="row justify-content-center">
           <div className="col-md-6">
             {!incomingRide ? (
@@ -209,11 +236,10 @@ export default function App() {
               </div>
             ) : (
               <div className="glass-card p-5 border-warning border-3 mt-5 animate__animated animate__tada">
-                 <h3 className="text-warning mb-4">🔥 NEW RIDE REQUEST!</h3>
+                 <h3 className="text-warning mb-4">🔥 PAID RIDE REQUEST!</h3>
                  <p className="fs-5"><b>Customer:</b> {incomingRide.riderName}</p>
                  <p className="fs-5"><b>Pickup:</b> {incomingRide.pickup}</p>
-                 <p className="fs-5"><b>Drop:</b> {incomingRide.drop}</p>
-                 <h2 className="text-success my-4">{incomingRide.fare}</h2>
+                 <h2 className="text-success my-4">{incomingRide.fare} (Pre-paid)</h2>
                  <div className="d-flex gap-3">
                    <button onClick={acceptRide} className="btn btn-success btn-lg flex-grow-1 fw-bold">ACCEPT</button>
                    <button onClick={() => setIncomingRide(null)} className="btn btn-outline-danger btn-lg flex-grow-1">REJECT</button>
@@ -226,12 +252,9 @@ export default function App() {
     );
   };
 
-  // --------------------------------------------------------
-  // APP ROUTER
-  // --------------------------------------------------------
   if (role === 'customer') return <CustomerPanel />;
   if (role === 'captain') return <CaptainPanel />;
-  if (role === 'admin') return <div className="text-center mt-5"><h1>Admin Setup Next...</h1><button onClick={logout} className="btn btn-danger">Back</button></div>;
+  if (role === 'admin') return <div className="text-center mt-5 text-white"><h1>Admin Console</h1><button onClick={logout} className="btn btn-danger">Back</button></div>;
 
   return <LandingPage />;
 }
