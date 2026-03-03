@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
-// 🚀 Asli Server Connection (Sirf ek baar likha hai ab!)
+// 🚀 Asli Live Server Connection
 const SERVER_URL = "https://rideease-4m7a.onrender.com"; 
 const socket = io(SERVER_URL);
 
@@ -16,7 +16,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [userData, setUserData] = useState(null);
 
-  // Load Razorpay Script Automatically
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -40,7 +39,7 @@ export default function App() {
   };
 
   // --------------------------------------------------------
-  // 1. SMART LOGIN PAGE
+  // 1. SMART LOGIN PAGE (Fixed Double Click Bug)
   // --------------------------------------------------------
   const LandingPage = () => {
     const [phone, setPhone] = useState('');
@@ -48,10 +47,12 @@ export default function App() {
     const [name, setName] = useState('');
     const [city, setCity] = useState('');
     const [selectedRole, setSelectedRole] = useState('customer');
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleLogin = async (e) => {
       e.preventDefault();
-      if(phone.length !== 10) return alert("Please enter 10 digits Boss!");
+      if(phone.length !== 10) return alert("Please enter exactly 10 digits Boss!");
+      setIsLoading(true);
       try {
         const res = await axios.post(`${SERVER_URL}/api/login`, { phone });
         if (res.data.isNew) setStep(2);
@@ -60,18 +61,22 @@ export default function App() {
           setUserData(res.data.user);
           setRole(res.data.user.role);
         }
-      } catch (err) { alert("Server error! Backend so raha hoga, 1 min wait karke try karein."); }
+      } catch (err) { alert("Server error! Backend neend mein hai, 30 seconds wait karke try karein."); }
+      setIsLoading(false);
     };
 
     const handleRegister = async (e) => {
       e.preventDefault();
+      setIsLoading(true);
       const newUser = { phone, name, city, role: selectedRole };
       try {
         await axios.post(`${SERVER_URL}/api/register`, newUser);
         localStorage.setItem('rideease_user', JSON.stringify(newUser));
         setUserData(newUser);
         setRole(selectedRole);
-      } catch (err) { alert("Registration failed!"); }
+        setActiveTab(selectedRole === 'captain' ? 'overview' : 'home');
+      } catch (err) { alert("Registration failed! Number already exists."); }
+      setIsLoading(false);
     };
 
     return (
@@ -79,22 +84,31 @@ export default function App() {
          <h1 className="display-1 fw-bold mb-3"><span className="text-warning">Ride</span>Ease</h1>
          <div className="glass-card p-5 mt-4" style={{width: '400px'}}>
             {step === 1 ? (
-              <form onSubmit={handleLogin}>
+              <form onSubmit={handleLogin} className="animate__animated animate__fadeIn">
                 <h4 className="mb-4">Login / Sign Up</h4>
                 <div className="d-flex justify-content-center gap-2 mb-4">
                    <button type="button" onClick={()=>setSelectedRole('customer')} className={`btn btn-sm ${selectedRole === 'customer' ? 'btn-warning' : 'btn-outline-secondary text-white'}`}>Customer</button>
                    <button type="button" onClick={()=>setSelectedRole('captain')} className={`btn btn-sm ${selectedRole === 'captain' ? 'btn-warning' : 'btn-outline-secondary text-white'}`}>Captain</button>
-                   <button type="button" onClick={()=>setRole('admin')} className="btn btn-sm btn-outline-danger">Admin</button>
+                   <button type="button" onClick={()=>{setRole('admin'); setActiveTab('dash');}} className="btn btn-sm btn-outline-danger">Admin</button>
                 </div>
-                <input type="number" className="form-control bg-dark text-white p-3 mb-3" placeholder="Phone Number" value={phone} onChange={(e)=>setPhone(e.target.value)} required />
-                <button type="submit" className="btn btn-premium w-100 py-2">Continue</button>
+                <div className="mb-3 text-start">
+                  <label className="text-white-50 small mb-1 fw-bold">10-Digit Mobile Number</label>
+                  <input type="number" className="form-control bg-dark text-white p-3 border-secondary" placeholder="e.g. 9876543210" value={phone} onChange={(e)=>setPhone(e.target.value)} required />
+                </div>
+                <button type="submit" disabled={isLoading} className="btn btn-premium w-100 py-2 fs-5">{isLoading ? 'Connecting...' : 'Continue'}</button>
               </form>
             ) : (
-              <form onSubmit={handleRegister}>
-                <h4 className="mb-4 text-warning">Welcome New {selectedRole}!</h4>
-                <input type="text" className="form-control bg-dark text-white p-3 mb-3" placeholder="Full Name" value={name} onChange={(e)=>setName(e.target.value)} required />
-                <input type="text" className="form-control bg-dark text-white p-3 mb-4" placeholder="City (e.g., Virar)" value={city} onChange={(e)=>setCity(e.target.value)} required />
-                <button type="submit" className="btn btn-premium w-100 py-2">Create Account</button>
+              <form onSubmit={handleRegister} className="text-start animate__animated animate__fadeIn">
+                <h4 className="mb-4 text-warning text-center">Welcome New {selectedRole}!</h4>
+                <div className="mb-3">
+                  <label className="text-white-50 small mb-1 fw-bold">Enter Your Full Name</label>
+                  <input type="text" className="form-control bg-dark text-white p-3 border-secondary" placeholder="e.g., Raj Tiwari" value={name} onChange={(e)=>setName(e.target.value)} required />
+                </div>
+                <div className="mb-4">
+                  <label className="text-white-50 small mb-1 fw-bold">Enter Your City</label>
+                  <input type="text" className="form-control bg-dark text-white p-3 border-secondary" placeholder="e.g., Virar" value={city} onChange={(e)=>setCity(e.target.value)} required />
+                </div>
+                <button type="submit" disabled={isLoading} className="btn btn-premium w-100 py-2 fs-5">{isLoading ? 'Saving...' : 'Create Account'}</button>
               </form>
             )}
          </div>
@@ -103,7 +117,7 @@ export default function App() {
   };
 
   // --------------------------------------------------------
-  // 2. CUSTOMER PANEL (WITH RAZORPAY)
+  // 2. FULL CUSTOMER PANEL (Sidebar + Razorpay + Sockets)
   // --------------------------------------------------------
   const CustomerPanel = () => {
     const [rideStatus, setRideStatus] = useState('idle');
@@ -136,7 +150,7 @@ export default function App() {
             socket.emit('request_ride', {
               riderName: userData.name,
               pickup: `${userData.city} Railway Station`,
-              drop: "Destination XYZ",
+              drop: "City Center Mall",
               fare: `₹${fareAmount}`,
               phone: userData.phone
             });
@@ -149,8 +163,7 @@ export default function App() {
         rzp.on('payment.failed', function (response){ alert("Payment Failed: " + response.error.description); });
         rzp.open();
       } catch (error) {
-        console.error("Payment Init Error:", error);
-        alert("Failed to connect to payment gateway. Please check API Key.");
+        alert("Failed to connect to payment gateway.");
       }
     };
 
@@ -158,43 +171,82 @@ export default function App() {
       <div className="container-fluid min-vh-100 p-3 position-relative">
         <div className="map-bg"></div>
         <div className="row g-4 position-relative" style={{ zIndex: 10 }}>
+          
+          {/* Customer Sidebar */}
           <div className="col-md-3">
-            <div className="glass-card p-4 h-100 text-center">
-              <img src={`https://ui-avatars.com/api/?name=${userData?.name}&background=fbbf24`} className="rounded-circle mb-3" width="70" alt="profile"/>
-              <h5 className="text-warning">{userData?.name}</h5>
-              <p className="small text-white-50">{userData?.city}, Maharashtra</p>
-              <button onClick={logout} className="btn btn-outline-danger w-100 mt-5">🚪 Logout</button>
+            <div className="glass-card p-4 h-100">
+              <div className="text-center mb-4">
+                <img src={`https://ui-avatars.com/api/?name=${userData?.name}&background=fbbf24`} className="rounded-circle mb-2" width="70" alt="profile"/>
+                <h5 className="text-warning">{userData?.name}</h5>
+                <p className="small text-white-50">{userData?.city}</p>
+              </div>
+              <button onClick={() => setActiveTab('home')} className={`menu-btn ${activeTab === 'home' ? 'active' : ''}`}>📍 Book a Ride</button>
+              <button onClick={() => setActiveTab('history')} className={`menu-btn ${activeTab === 'history' ? 'active' : ''}`}>📜 Ride History</button>
+              <button onClick={() => setActiveTab('refer')} className={`menu-btn ${activeTab === 'refer' ? 'active' : ''}`}>🎁 Refer & Earn</button>
+              <button onClick={() => setActiveTab('settings')} className={`menu-btn ${activeTab === 'settings' ? 'active' : ''}`}>⚙️ Settings</button>
+              <button onClick={logout} className="menu-btn text-danger mt-4">🚪 Logout</button>
             </div>
           </div>
-          
+
+          {/* Customer Main Area */}
           <div className="col-md-9">
-            <div className="glass-card p-4 mx-auto mt-5 animate__animated animate__fadeInUp" style={{maxWidth: '500px'}}>
-              {rideStatus === 'idle' && (
-                <>
-                  <h4 className="fw-bold mb-4">Book a Ride</h4>
-                  <input className="form-control bg-dark text-white mb-3 p-3" value={`${userData?.city} Station`} readOnly />
-                  <input className="form-control bg-dark text-white mb-4 p-3" placeholder="Enter Drop Destination" />
-                  <button onClick={processPaymentAndBook} className="btn btn-premium w-100 fs-5">Pay ₹{fareAmount} & Book Ride</button>
-                </>
-              )}
-
-              {rideStatus === 'searching' && (
-                <div className="text-center py-4">
-                  <div className="spinner-border text-warning mb-3"></div>
-                  <h4 className="text-warning">Finding Captains...</h4>
-                  <p className="text-white-50">Payment Confirmed. Locating drivers nearby.</p>
+            {activeTab === 'home' && (
+              <div className="glass-card p-4 animate__animated animate__fadeInUp" style={{maxWidth: '500px', margin: 'auto', marginTop: '5%'}}>
+                {rideStatus === 'idle' && (
+                  <>
+                    <h4 className="fw-bold mb-4">Book a Ride</h4>
+                    <input className="form-control bg-dark text-white border-secondary mb-3 p-3" value={`${userData?.city} Station`} readOnly />
+                    <input className="form-control bg-dark text-white border-secondary mb-4 p-3" placeholder="Enter Drop Destination" />
+                    <button onClick={processPaymentAndBook} className="btn btn-premium w-100 fs-5">Pay ₹{fareAmount} & Book Ride</button>
+                  </>
+                )}
+                {rideStatus === 'searching' && (
+                  <div className="text-center py-5">
+                    <div className="spinner-border text-warning mb-3"></div>
+                    <h4 className="text-warning">Finding Captains...</h4>
+                    <p className="text-white-50">Payment Confirmed. Locating drivers nearby.</p>
+                  </div>
+                )}
+                {rideStatus === 'accepted' && (
+                  <div className="text-center py-4 border border-success rounded bg-dark">
+                    <h4 className="text-success mb-3">Captain is arriving! 🏍️</h4>
+                    <h2 className="fw-bold">{captainDetails?.captainName}</h2>
+                    <p className="text-warning fs-5">{captainDetails?.vehicle}</p>
+                    <button onClick={() => setRideStatus('idle')} className="btn btn-success px-4 mt-3">Complete Trip</button>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {activeTab === 'history' && (
+              <div className="glass-card p-4 animate__animated animate__fadeIn">
+                <h4 className="text-warning mb-4">Past Rides</h4>
+                <div className="bg-dark p-3 rounded mb-2 border border-secondary d-flex justify-content-between">
+                  <div><p className="mb-0">Station ➔ City Mall</p><small className="text-white-50">Yesterday</small></div>
+                  <strong className="text-success">₹150</strong>
                 </div>
-              )}
-
-              {rideStatus === 'accepted' && (
-                <div className="text-center py-4 border border-success rounded bg-dark">
-                  <h4 className="text-success mb-3">Captain is arriving! 🏍️</h4>
-                  <h2 className="fw-bold">{captainDetails?.captainName}</h2>
-                  <p className="text-warning fs-5">{captainDetails?.vehicle}</p>
-                  <button onClick={() => setRideStatus('idle')} className="btn btn-success px-4 mt-3">Complete Trip</button>
+                <div className="bg-dark p-3 rounded border border-secondary d-flex justify-content-between">
+                  <div><p className="mb-0">Home ➔ College</p><small className="text-white-50">Mar 1, 2026</small></div>
+                  <strong className="text-success">₹80</strong>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {activeTab === 'refer' && (
+              <div className="glass-card p-5 text-center animate__animated animate__fadeIn">
+                <h2>Invite Friends, Get <span className="text-warning">₹100</span>!</h2>
+                <div className="bg-dark p-3 rounded fs-3 fw-bold letter-spacing-3 my-4 border border-secondary">RIDE-EASE-505</div>
+                <button className="btn btn-success px-5">Share via WhatsApp</button>
+              </div>
+            )}
+
+            {activeTab === 'settings' && (
+               <div className="glass-card p-4 animate__animated animate__fadeIn">
+                 <h4 className="mb-4">App Settings</h4>
+                 <div className="form-check form-switch mb-3"><input className="form-check-input" type="checkbox" defaultChecked /><label className="form-check-label ms-2">Dark Mode</label></div>
+                 <div className="form-check form-switch mb-3"><input className="form-check-input" type="checkbox" defaultChecked /><label className="form-check-label ms-2">Push Notifications</label></div>
+               </div>
+            )}
           </div>
         </div>
       </div>
@@ -202,7 +254,7 @@ export default function App() {
   };
 
   // --------------------------------------------------------
-  // 3. CAPTAIN & ADMIN PANELS
+  // 3. FULL CAPTAIN PANEL (Sidebar + Live Requests)
   // --------------------------------------------------------
   const CaptainPanel = () => {
     const [incomingRide, setIncomingRide] = useState(null);
@@ -213,34 +265,66 @@ export default function App() {
     }, []);
 
     const acceptRide = () => {
-      socket.emit('accept_ride', { ...incomingRide, captainName: userData.name, vehicle: "MH-15-XY-9999" });
+      socket.emit('accept_ride', { ...incomingRide, captainName: userData?.name, vehicle: "MH-15-XY-9999" });
       setIncomingRide(null);
       alert("Ride Accepted! Navigation Started.");
     };
 
     return (
-      <div className="container-fluid min-vh-100 p-4 bg-dark">
-        <div className="d-flex justify-content-between align-items-center mb-4 glass-card p-3">
-          <h4 className="text-warning mb-0">Duty Status: ONLINE</h4>
-          <button onClick={logout} className="btn btn-danger">Duty Off</button>
-        </div>
-        <div className="row justify-content-center">
-          <div className="col-md-6">
-            {!incomingRide ? (
-              <div className="glass-card p-5 text-center opacity-50 mt-5">
-                <div className="spinner-grow text-warning mb-3" style={{width: '3rem', height: '3rem'}}></div>
-                <h3>Waiting for Rides in {userData?.city}...</h3>
-              </div>
-            ) : (
-              <div className="glass-card p-5 border-warning border-3 mt-5 animate__animated animate__tada">
-                 <h3 className="text-warning mb-4">🔥 PAID RIDE REQUEST!</h3>
-                 <p className="fs-5"><b>Customer:</b> {incomingRide.riderName}</p>
-                 <p className="fs-5"><b>Pickup:</b> {incomingRide.pickup}</p>
-                 <h2 className="text-success my-4">{incomingRide.fare} (Pre-paid)</h2>
-                 <div className="d-flex gap-3">
-                   <button onClick={acceptRide} className="btn btn-success btn-lg flex-grow-1 fw-bold">ACCEPT</button>
-                   <button onClick={() => setIncomingRide(null)} className="btn btn-outline-danger btn-lg flex-grow-1">REJECT</button>
+      <div className="container-fluid min-vh-100 p-3 bg-dark">
+        <div className="row g-4">
+          
+          {/* Captain Sidebar */}
+          <div className="col-md-3">
+            <div className="glass-card p-4 h-100">
+               <div className="d-flex justify-content-between align-items-center mb-4">
+                  <h5>Captain Hub</h5>
+                  <span className="badge bg-success">ONLINE</span>
+               </div>
+               <button onClick={() => setActiveTab('overview')} className={`menu-btn ${activeTab === 'overview' ? 'active' : ''}`}>📊 Overview & Rides</button>
+               <button onClick={() => setActiveTab('wallet')} className={`menu-btn ${activeTab === 'wallet' ? 'active' : ''}`}>💰 Wallet & Payout</button>
+               <button onClick={() => setActiveTab('docs')} className={`menu-btn ${activeTab === 'docs' ? 'active' : ''}`}>🏍️ Vehicle & Docs</button>
+               <button onClick={logout} className="menu-btn text-danger mt-5">🚪 Duty Off (Logout)</button>
+            </div>
+          </div>
+
+          {/* Captain Main Area */}
+          <div className="col-md-9">
+            {activeTab === 'overview' && (
+              <div className="animate__animated animate__fadeIn">
+                 <div className="row g-3 mb-4">
+                   <div className="col-4"><div className="glass-card p-4 text-center border-bottom border-success border-4"><h6>Today's Earnings</h6><h4>₹850</h4></div></div>
+                   <div className="col-4"><div className="glass-card p-4 text-center border-bottom border-warning border-4"><h6>Trips</h6><h4>06</h4></div></div>
+                   <div className="col-4"><div className="glass-card p-4 text-center border-bottom border-info border-4"><h6>Rating</h6><h4>4.9 ⭐</h4></div></div>
                  </div>
+                 
+                 {!incomingRide ? (
+                   <div className="glass-card p-5 text-center opacity-50 mt-4">
+                     <div className="spinner-grow text-warning mb-3" style={{width: '3rem', height: '3rem'}}></div>
+                     <h3>Waiting for Rides in {userData?.city}...</h3>
+                   </div>
+                 ) : (
+                   <div className="glass-card p-5 border-warning border-3 mt-4 animate__animated animate__tada">
+                      <h3 className="text-warning mb-4">🔥 PAID RIDE REQUEST!</h3>
+                      <p className="fs-5"><b>Customer:</b> {incomingRide.riderName}</p>
+                      <p className="fs-5"><b>Pickup:</b> {incomingRide.pickup}</p>
+                      <h2 className="text-success my-4">{incomingRide.fare} (Pre-paid)</h2>
+                      <div className="d-flex gap-3">
+                        <button onClick={acceptRide} className="btn btn-success btn-lg flex-grow-1 fw-bold">ACCEPT</button>
+                        <button onClick={() => setIncomingRide(null)} className="btn btn-outline-danger btn-lg flex-grow-1">REJECT</button>
+                      </div>
+                   </div>
+                 )}
+              </div>
+            )}
+            
+            {activeTab === 'docs' && (
+              <div className="glass-card p-4 animate__animated animate__fadeIn">
+                 <h4 className="text-warning mb-4">Document Verification</h4>
+                 <ul className="list-group list-group-flush bg-transparent">
+                    <li className="list-group-item bg-transparent text-white d-flex justify-content-between">Aadhaar Card <span className="text-success">Verified ✅</span></li>
+                    <li className="list-group-item bg-transparent text-white d-flex justify-content-between">Driving License <span className="text-success">Verified ✅</span></li>
+                 </ul>
               </div>
             )}
           </div>
@@ -249,9 +333,49 @@ export default function App() {
     );
   };
 
+  // --------------------------------------------------------
+  // 4. FULL ADMIN MASTER CONTROL
+  // --------------------------------------------------------
+  const AdminPanel = () => (
+    <div className="container-fluid min-vh-100 p-0 d-flex bg-dark text-white">
+      <div className="glass-card m-3 p-4" style={{width: '280px'}}>
+        <h4 className="text-warning fw-bold mb-5">Admin Console</h4>
+        <button onClick={() => setActiveTab('dash')} className={`menu-btn ${activeTab === 'dash' ? 'active' : ''}`}>📈 System Dashboard</button>
+        <button onClick={() => setActiveTab('verify')} className={`menu-btn ${activeTab === 'verify' ? 'active' : ''}`}>✔️ Verify Captains</button>
+        <button onClick={() => setActiveTab('fraud')} className={`menu-btn ${activeTab === 'fraud' ? 'active' : ''}`}>🚨 Security Alerts</button>
+        <button onClick={logout} className="menu-btn text-danger mt-5">🚪 Logout</button>
+      </div>
+
+      <div className="flex-grow-1 p-4">
+        {activeTab === 'dash' && (
+          <div className="animate__animated animate__fadeIn">
+            <h2 className="mb-4">Platform Overview</h2>
+            <div className="row g-4">
+              <div className="col-4"><div className="glass-card p-4"><h6>Total Revenue</h6><h3 className="text-success">₹12.5L</h3></div></div>
+              <div className="col-4"><div className="glass-card p-4"><h6>Active Rides</h6><h3 className="text-primary">42</h3></div></div>
+              <div className="col-4"><div className="glass-card p-4 border-danger"><h6>Pending Approvals</h6><h3 className="text-danger">12</h3></div></div>
+            </div>
+            <div className="glass-card p-4 mt-4 text-center">
+               <h4 className="text-white-50">System is Online & Secure</h4>
+            </div>
+          </div>
+        )}
+        {activeTab === 'fraud' && (
+           <div className="glass-card p-4 border-danger animate__animated animate__fadeIn">
+             <h3 className="text-danger fw-bold">⚠️ Security Alerts</h3>
+             <div className="bg-dark p-3 rounded mt-3 border border-secondary d-flex justify-content-between">
+                <div><h6 className="mb-0">Captain #1042</h6><small className="text-white-50">Unusual location spoofing detected.</small></div>
+                <button className="btn btn-sm btn-danger">Suspend</button>
+             </div>
+           </div>
+        )}
+      </div>
+    </div>
+  );
+
   if (role === 'customer') return <CustomerPanel />;
   if (role === 'captain') return <CaptainPanel />;
-  if (role === 'admin') return <div className="text-center mt-5 text-white"><h1>Admin Console</h1><button onClick={logout} className="btn btn-danger">Back</button></div>;
+  if (role === 'admin') return <AdminPanel />;
 
   return <LandingPage />;
 }
