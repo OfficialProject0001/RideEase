@@ -1,18 +1,22 @@
 import sqlite3
+import razorpay
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
 CORS(app)
-# Real-time WebSocket On!
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# --- DATABASE SETUP (Server ki memory) ---
+# ⚠️ APNI RAZORPAY KEYS YAHAN DAALEIN ⚠️
+RAZORPAY_KEY_ID = 'rzp_test_YOUR_KEY_HERE'
+RAZORPAY_KEY_SECRET = 'YOUR_SECRET_HERE'
+rzp_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+
+# --- DATABASE SETUP ---
 def init_db():
     conn = sqlite3.connect('rideease.db')
     c = conn.cursor()
-    # Table banayenge agar pehle se nahi hai
     c.execute('''CREATE TABLE IF NOT EXISTS users 
                  (phone TEXT PRIMARY KEY, name TEXT, city TEXT, role TEXT)''')
     conn.commit()
@@ -20,7 +24,7 @@ def init_db():
 
 init_db()
 
-# --- 1. REAL LOGIN SYSTEM API ---
+# --- 1. LOGIN & REGISTRATION API ---
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
@@ -30,15 +34,11 @@ def login():
     c = conn.cursor()
     c.execute("SELECT * FROM users WHERE phone=?", (phone,))
     user = c.fetchone()
+    conn.close()
     
     if user:
-        # Purana user mil gaya
-        conn.close()
         return jsonify({"isNew": False, "user": {"phone": user[0], "name": user[1], "city": user[2], "role": user[3]}})
-    else:
-        # Naya user hai
-        conn.close()
-        return jsonify({"isNew": True, "message": "Please provide name and city"})
+    return jsonify({"isNew": True, "message": "New user"})
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -49,23 +49,34 @@ def register():
               (data['phone'], data['name'], data['city'], data['role']))
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "User saved to server!"})
+    return jsonify({"success": True})
 
+# --- 2. RAZORPAY ORDER API ---
+@app.route('/api/create-order', methods=['POST'])
+def create_order():
+    data = request.json
+    amount = int(data.get('amount', 100)) * 100 # Convert to paise
+    
+    order_data = {
+        "amount": amount,
+        "currency": "INR",
+        "receipt": "ride_receipt",
+        "payment_capture": 1
+    }
+    order = rzp_client.order.create(data=order_data)
+    return jsonify(order)
 
-# --- 2. REAL-TIME RIDE BOOKING (SOCKETS) ---
+# --- 3. REAL-TIME SOCKETS ---
 @socketio.on('request_ride')
 def handle_ride_request(ride_data):
     print("New Ride Requested:", ride_data)
-    # Customer ne request bheji, server ne saare Captains ko 'broadcast' kar di
     emit('incoming_ride', ride_data, broadcast=True)
 
 @socketio.on('accept_ride')
 def handle_ride_accept(accept_data):
     print("Ride Accepted by:", accept_data['captainName'])
-    # Captain ne accept ki, server ne wapas Customer ko bata diya
     emit('ride_confirmed', accept_data, broadcast=True)
 
 if __name__ == '__main__':
-    print("🚀 Real RideEase Server Running with DB & Sockets!")
-    # Bas aage allow_unsafe_werkzeug=True add kar diya
+    print("🚀 RideEase Server with Razorpay & DB Running!")
     socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
