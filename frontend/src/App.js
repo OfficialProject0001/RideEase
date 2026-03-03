@@ -6,7 +6,7 @@ import './App.css';
 
 // 🚀 Asli Server Connection (Render live link ya localhost daalein)
 const SERVER_URL = "http://localhost:5000"; 
-const socket = io(SERVER_URL);
+const SERVER_URL = "https://rideease-4m7a.onrender.com";
 
 // ⚠️ APNI RAZORPAY KEY YAHAN BHI DAALEIN ⚠️
 const RAZORPAY_KEY_ID = "rzp_test_YOUR_KEY_HERE";
