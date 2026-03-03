@@ -4,11 +4,11 @@ import { io } from 'socket.io-client';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
-// 🚀 Asli Server Connection (Render live link ya localhost daalein)
-const SERVER_URL = "http://localhost:5000"; 
-const SERVER_URL = "https://rideease-4m7a.onrender.com";
+// 🚀 Asli Server Connection (Sirf ek baar likha hai ab!)
+const SERVER_URL = "https://rideease-4m7a.onrender.com"; 
+const socket = io(SERVER_URL);
 
-// ⚠️ APNI RAZORPAY KEY YAHAN BHI DAALEIN ⚠️
+// ⚠️ APNI RAZORPAY KEY YAHAN DAALEIN ⚠️
 const RAZORPAY_KEY_ID = "rzp_test_YOUR_KEY_HERE";
 
 export default function App() {
@@ -51,7 +51,7 @@ export default function App() {
 
     const handleLogin = async (e) => {
       e.preventDefault();
-      if(phone.length !== 10) return alert("Please enter 10 digits");
+      if(phone.length !== 10) return alert("Please enter 10 digits Boss!");
       try {
         const res = await axios.post(`${SERVER_URL}/api/login`, { phone });
         if (res.data.isNew) setStep(2);
@@ -60,7 +60,7 @@ export default function App() {
           setUserData(res.data.user);
           setRole(res.data.user.role);
         }
-      } catch (err) { alert("Server error!"); }
+      } catch (err) { alert("Server error! Backend so raha hoga, 1 min wait karke try karein."); }
     };
 
     const handleRegister = async (e) => {
@@ -108,7 +108,7 @@ export default function App() {
   const CustomerPanel = () => {
     const [rideStatus, setRideStatus] = useState('idle');
     const [captainDetails, setCaptainDetails] = useState(null);
-    const fareAmount = 150; // Demo Fare
+    const fareAmount = 150; 
 
     useEffect(() => {
       socket.on('ride_confirmed', (data) => {
@@ -120,11 +120,9 @@ export default function App() {
 
     const processPaymentAndBook = async () => {
       try {
-        // 1. Create Order in Backend
         const orderRes = await axios.post(`${SERVER_URL}/api/create-order`, { amount: fareAmount });
         const order = orderRes.data;
 
-        // 2. Open Razorpay Window
         const options = {
           key: RAZORPAY_KEY_ID,
           amount: order.amount,
@@ -134,7 +132,6 @@ export default function App() {
           order_id: order.id,
           handler: function (response) {
             alert(`Payment Success! ID: ${response.razorpay_payment_id}`);
-            // 3. Emit Socket to find Drivers AFTER payment
             setRideStatus('searching');
             socket.emit('request_ride', {
               riderName: userData.name,
@@ -153,7 +150,7 @@ export default function App() {
         rzp.open();
       } catch (error) {
         console.error("Payment Init Error:", error);
-        alert("Failed to connect to payment gateway.");
+        alert("Failed to connect to payment gateway. Please check API Key.");
       }
     };
 
