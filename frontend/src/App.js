@@ -35,9 +35,7 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('rideease_user');
-    setUserData(null);
-    setRole(null);
-    setCurrentView('landing');
+    setUserData(null); setRole(null); setCurrentView('landing');
     socket.disconnect();
   };
 
@@ -79,17 +77,12 @@ export default function App() {
       try {
         const payload = role === 'admin' ? { phone, password } : { phone };
         const res = await axios.post(`${SERVER_URL}/api/login`, payload);
-
         if (res.data.isNew && role !== 'admin') {
           setAuthStep('register');
         } else if (!res.data.isNew) {
           finalizeLogin(res.data.user);
-        } else {
-          alert("Invalid Credentials");
-        }
-      } catch {
-        alert("Server is waking up, retry in 10 seconds!");
-      }
+        } else { alert("Invalid Credentials"); }
+      } catch { alert("Server is waking up, retry in 10 seconds!"); }
     };
 
     const handleRegister = async (e) => {
@@ -101,8 +94,7 @@ export default function App() {
 
     const finalizeLogin = (user) => {
       localStorage.setItem('rideease_user', JSON.stringify(user));
-      setUserData(user);
-      socket.connect();
+      setUserData(user); socket.connect();
       setActiveTab(role === 'captain' ? 'radar' : role === 'admin' ? 'dash' : 'home');
       setCurrentView('dashboard');
     };
@@ -112,26 +104,24 @@ export default function App() {
         <BackButton onClick={() => navigateTo('landing')} />
         <div className="glass-card p-5" style={{ width: '420px' }}>
           <h4 className="mb-4 text-center text-warning fw-bold">{role?.toUpperCase()} LOGIN</h4>
-
           {authStep === 'phone' ? (
             <form onSubmit={handleSubmit}>
               <div className="mb-3 text-start">
                 <label className="form-label text-warning fw-semibold">{role === 'admin' ? "Admin ID" : "Phone Number"}</label>
                 <input type="text" className="form-control bg-dark text-white p-3 border-secondary" placeholder={role === 'admin' ? "Enter Admin ID" : "Enter 10-digit mobile number"} value={phone} onChange={(e) => setPhone(e.target.value)} required />
-                <small className="text-white-50">{role === 'admin' ? "Use official admin credentials" : "Must be registered number"}</small>
+                <small className="text-white-50">{role === 'admin' ? "Use official admin credentials" : "Agar naya number hai, toh Name aage mangega"}</small>
               </div>
-
               {role === 'admin' && (
                 <div className="mb-3 text-start">
                   <label className="form-label text-warning fw-semibold">Password</label>
                   <input type="password" className="form-control bg-dark text-white p-3 border-secondary" placeholder="Enter secure password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-                  <small className="text-white-50">Password is case-sensitive</small>
                 </div>
               )}
               <button type="submit" className="btn btn-warning w-100 py-3 mt-3 fw-bold">Continue</button>
             </form>
           ) : (
-            <form onSubmit={handleRegister}>
+            <form onSubmit={handleRegister} className="animate__animated animate__fadeInRight">
+              <h6 className="text-success mb-3">Welcome! Please provide your details.</h6>
               <div className="mb-3 text-start">
                 <label className="form-label text-warning fw-semibold">Full Name</label>
                 <input type="text" className="form-control bg-dark text-white p-3 border-secondary" placeholder="Enter your full name" onChange={(e) => setName(e.target.value)} required />
@@ -139,9 +129,8 @@ export default function App() {
               <div className="mb-4 text-start">
                 <label className="form-label text-warning fw-semibold">City</label>
                 <input type="text" className="form-control bg-dark text-white p-3 border-secondary" placeholder="Enter your city" onChange={(e) => setCity(e.target.value)} required />
-                <small className="text-white-50">This helps us find nearby captains</small>
               </div>
-              <button type="submit" className="btn btn-warning w-100 py-3 fw-bold">Create Account</button>
+              <button type="submit" className="btn btn-warning w-100 py-3 fw-bold">Create Account & Login</button>
             </form>
           )}
         </div>
@@ -156,28 +145,24 @@ export default function App() {
     const [rideState, setRideState] = useState('idle'); 
     const [currentRide, setCurrentRide] = useState(null);
     const [rideHistory, setRideHistory] = useState([]);
+    const [pickupLoc, setPickupLoc] = useState(`${userData?.city || 'Mumbai'} Station`);
+    const [dropLoc, setDropLoc] = useState('City Center Mall');
+    const [showQR, setShowQR] = useState(false);
     const fareAmount = 150; 
 
     useEffect(() => {
-      socket.on('ride_accepted_by_captain', (data) => {
-          if (data.riderPhone === userData.phone) { setCurrentRide(data); setRideState('accepted'); }
-      });
-      socket.on('ride_started', (data) => {
-          if (data.riderPhone === userData.phone) { setRideState('in_progress'); }
-      });
-      socket.on('ride_completed_pay_now', (data) => {
-          if (data.riderPhone === userData.phone) { setRideState('payment_pending'); }
-      });
+      socket.on('ride_accepted_by_captain', (data) => { if (data.riderPhone === userData.phone) { setCurrentRide(data); setRideState('accepted'); } });
+      socket.on('ride_started', (data) => { if (data.riderPhone === userData.phone) { setRideState('in_progress'); } });
+      socket.on('ride_completed_pay_now', (data) => { if (data.riderPhone === userData.phone) { setRideState('payment_pending'); } });
       socket.on('trip_fully_complete', (data) => {
           if (data.riderPhone === userData.phone) { 
               alert("Payment Successful! Ride Complete.");
-              setRideState('idle'); setCurrentRide(null); 
+              setRideState('idle'); setCurrentRide(null); setShowQR(false);
           }
       });
       return () => { socket.off('ride_accepted_by_captain'); socket.off('ride_started'); socket.off('ride_completed_pay_now'); socket.off('trip_fully_complete'); }
     }, []);
 
-    // REAL HISTORY FETCH
     useEffect(() => {
       if(activeTab === 'history') {
           axios.get(`${SERVER_URL}/api/rides/${userData.phone}`).then(res => setRideHistory(res.data)).catch(err => console.error(err));
@@ -185,10 +170,11 @@ export default function App() {
     }, [activeTab]);
 
     const bookRide = () => {
+        if(!pickupLoc || !dropLoc) return alert("Please enter both locations!");
         setRideState('searching');
         socket.emit('request_ride', {
-            riderName: userData.name, riderPhone: userData.phone,
-            pickup: `${userData.city} Station`, drop: "City Center Mall", fare: fareAmount
+            riderName: userData?.name || 'Rider', riderPhone: userData.phone,
+            pickup: pickupLoc, drop: dropLoc, fare: fareAmount
         });
     };
 
@@ -202,7 +188,6 @@ export default function App() {
     };
 
     const handleCashPayment = () => saveRideToDBAndFinish('Cash');
-
     const handleOnlinePayment = async () => {
       try {
         const orderRes = await axios.post(`${SERVER_URL}/api/create-order`, { amount: fareAmount });
@@ -210,15 +195,12 @@ export default function App() {
             const options = {
               key: RAZORPAY_KEY_ID, amount: orderRes.data.amount, currency: "INR", name: "RideEase",
               description: "Ride Fare", order_id: orderRes.data.id,
-              handler: (res) => saveRideToDBAndFinish('Online'),
+              handler: () => saveRideToDBAndFinish('Online'),
               prefill: { name: userData.name, contact: userData.phone }, theme: { color: "#fbbf24" }
             };
             new window.Razorpay(options).open();
-        } else { throw new Error("Razorpay Test Keys Not Setup"); }
-      } catch (err) { 
-        alert("Razorpay Demo Mode: Simulating Success!");
-        saveRideToDBAndFinish('Online (Demo)');
-      }
+        } else { throw new Error("No Keys"); }
+      } catch (err) { setShowQR(true); }
     };
 
     return (
@@ -226,7 +208,7 @@ export default function App() {
           <div className="col-md-3 border-end border-secondary p-4 d-flex flex-column h-100 min-vh-100">
               <div className="text-center mb-4">
                   <h4 className="text-warning fw-bold">Customer Hub</h4>
-                  <p className="text-white-50">Hello, {userData?.name}</p>
+                  <p className="text-white-50">Hello, <span className="text-white fw-bold">{userData?.name || userData?.phone || 'Boss'}</span></p>
               </div>
               <button onClick={() => setActiveTab('home')} className={`btn text-start mb-2 ${activeTab==='home'?'btn-warning':'btn-outline-secondary text-white'}`}>📍 Book Ride</button>
               <button onClick={() => setActiveTab('history')} className={`btn text-start mb-2 ${activeTab==='history'?'btn-warning':'btn-outline-secondary text-white'}`}>📜 My History</button>
@@ -242,8 +224,10 @@ export default function App() {
                      {rideState === 'idle' && (
                         <>
                             <h3 className="mb-4 fw-bold">Where to today?</h3>
-                            <input className="form-control bg-dark text-white p-3 mb-3 border-secondary" value={`${userData?.city} Station`} readOnly />
-                            <input className="form-control bg-dark text-white p-3 mb-4 border-secondary" value="City Center Mall" readOnly />
+                            <label className="small text-white-50 mb-1">Pickup Location</label>
+                            <input type="text" className="form-control bg-dark text-white p-3 mb-3 border-warning" value={pickupLoc} onChange={(e) => setPickupLoc(e.target.value)} />
+                            <label className="small text-white-50 mb-1">Drop Location</label>
+                            <input type="text" className="form-control bg-dark text-white p-3 mb-4 border-warning" value={dropLoc} onChange={(e) => setDropLoc(e.target.value)} />
                             <button onClick={bookRide} className="btn btn-warning w-100 py-3 fs-5 fw-bold">Find Captain (₹{fareAmount})</button>
                         </>
                      )}
@@ -264,10 +248,18 @@ export default function App() {
                          <div className="text-center py-4 animate__animated animate__bounceIn">
                             <h2 className="text-warning fw-bold mb-3">Destination Reached!</h2>
                             <h1 className="text-white mb-4">₹{fareAmount}</h1>
-                            <div className="d-flex flex-column gap-3">
-                                <button onClick={handleOnlinePayment} className="btn btn-success py-3 fw-bold fs-5">Pay Online (Razorpay)</button>
-                                <button onClick={handleCashPayment} className="btn btn-outline-light py-3 fw-bold fs-5">I will Pay Cash</button>
-                            </div>
+                            {!showQR ? (
+                                <div className="d-flex flex-column gap-3">
+                                    <button onClick={handleOnlinePayment} className="btn btn-success py-3 fw-bold fs-5">Pay Online (Razorpay)</button>
+                                    <button onClick={handleCashPayment} className="btn btn-outline-light py-3 fw-bold fs-5">I will Pay Cash</button>
+                                </div>
+                            ) : (
+                                <div className="bg-dark p-4 rounded border border-secondary animate__animated animate__zoomIn">
+                                    <p className="text-warning mb-2 fw-bold">Scan QR to Pay (Demo)</p>
+                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=demo@upi&pn=RideEase&am=${fareAmount}`} alt="QR Code" className="mb-4 bg-white p-2 rounded" />
+                                    <button onClick={() => saveRideToDBAndFinish('Online (QR Demo)')} className="btn btn-success w-100 py-3 fw-bold fs-5">I have Paid ✅</button>
+                                </div>
+                            )}
                          </div>
                      )}
                  </div>
@@ -276,7 +268,7 @@ export default function App() {
                  <div className="glass-card p-4">
                      <h4 className="mb-4 text-warning">Real Past Rides</h4>
                      {rideHistory.length > 0 ? rideHistory.map((r, i) => (
-                         <div key={i} className="bg-dark p-3 rounded mb-2 border border-secondary d-flex justify-content-between">
+                         <div key={i} className="bg-dark p-3 rounded mb-2 border border-secondary d-flex justify-content-between align-items-center">
                             <div><p className="mb-0 fw-bold">{r[3]} ➔ {r[4]}</p><small className="text-white-50">{r[7]} • Captain: {r[2]}</small></div>
                             <h5 className="text-success fw-bold mb-0">₹{r[5]} <span className="fs-6 text-muted">({r[6]})</span></h5>
                          </div>
@@ -284,8 +276,8 @@ export default function App() {
                  </div>
              )}
              {activeTab === 'wallet' && <div className="glass-card p-4"><h4>Wallet</h4><h2>₹0.00</h2><button className="btn btn-warning mt-3">Add Money</button></div>}
-             {activeTab === 'refer' && <div className="glass-card p-4 text-center"><h4>Refer Code: RIDE-{userData?.phone.slice(0,4)}</h4><p>Share to get ₹50 off!</p></div>}
-             {activeTab === 'profile' && <div className="glass-card p-4"><h4>Profile</h4><p>Name: {userData?.name}</p><p>Phone: {userData?.phone}</p></div>}
+             {activeTab === 'refer' && <div className="glass-card p-4 text-center"><h4>Refer Code: RIDE-{userData?.phone?.slice(0,4)}</h4><p>Share to get ₹50 off!</p></div>}
+             {activeTab === 'profile' && <div className="glass-card p-4"><h4>Profile</h4><p>Name: {userData?.name || 'Not Provided'}</p><p>Phone: {userData?.phone}</p></div>}
           </div>
       </div>
     );
@@ -298,6 +290,7 @@ export default function App() {
     const [incomingRide, setIncomingRide] = useState(null);
     const [activeRide, setActiveRide] = useState(null);
     const [otpInput, setOtpInput] = useState('');
+    const [rideHistory, setRideHistory] = useState([]); // Captain ki history
 
     useEffect(() => {
       socket.on('incoming_ride', (data) => { if(!activeRide) setIncomingRide(data); });
@@ -312,8 +305,15 @@ export default function App() {
       return () => { socket.off('incoming_ride'); socket.off('ride_started'); socket.off('otp_failed'); socket.off('trip_fully_complete'); }
     }, [activeRide]);
 
+    // FETCH CAPTAIN HISTORY & EARNINGS
+    useEffect(() => {
+      if(activeTab === 'history' || activeTab === 'earnings') {
+          axios.get(`${SERVER_URL}/api/rides/${userData.name}`).then(res => setRideHistory(res.data)).catch(err => console.error(err));
+      }
+    }, [activeTab]);
+
     const acceptRide = () => {
-      socket.emit('accept_ride', { ...incomingRide, captainName: userData?.name });
+      socket.emit('accept_ride', { ...incomingRide, captainName: userData?.name || 'Captain' });
       setActiveRide({...incomingRide, status: 'accepted'});
       setIncomingRide(null);
     };
@@ -323,14 +323,12 @@ export default function App() {
         else alert("Please enter a 4-digit OTP");
     };
 
-    const markRideComplete = () => {
-        socket.emit('finish_ride', activeRide);
-    };
+    const markRideComplete = () => { socket.emit('finish_ride', activeRide); };
 
     return (
       <div className="container-fluid min-vh-100 p-0 row m-0 text-white bg-dark">
           <div className="col-md-3 border-end border-secondary p-4 d-flex flex-column h-100 min-vh-100">
-              <div className="text-center mb-4"><h4 className="text-warning fw-bold">Captain Hub</h4><span className="badge bg-success">Online</span></div>
+              <div className="text-center mb-4"><h4 className="text-warning fw-bold">Captain Hub</h4><p className="text-white-50">Hello, <span className="text-white fw-bold">{userData?.name || userData?.phone || 'Boss'}</span></p><span className="badge bg-success">Online</span></div>
               <button onClick={() => setActiveTab('radar')} className={`btn text-start mb-2 ${activeTab==='radar'?'btn-warning':'btn-outline-secondary text-white'}`}>📡 Live Radar</button>
               <button onClick={() => setActiveTab('earnings')} className={`btn text-start mb-2 ${activeTab==='earnings'?'btn-warning':'btn-outline-secondary text-white'}`}>💰 Earnings</button>
               <button onClick={() => setActiveTab('history')} className={`btn text-start mb-2 ${activeTab==='history'?'btn-warning':'btn-outline-secondary text-white'}`}>📜 Trip History</button>
@@ -380,10 +378,26 @@ export default function App() {
                      )}
                  </div>
              )}
-             {activeTab === 'earnings' && <div className="glass-card p-4"><h4>Earnings</h4><h1 className="text-success">₹0</h1></div>}
-             {activeTab === 'history' && <div className="glass-card p-4"><h4>Past Trips</h4><p className="text-white-50">Data sync pending...</p></div>}
+             {activeTab === 'earnings' && (
+                 <div className="glass-card p-4 text-center">
+                     <h4 className="text-warning mb-3">Total Earnings</h4>
+                     <h1 className="text-success display-4 fw-bold">₹{rideHistory.reduce((sum, r) => sum + r[5], 0)}</h1>
+                     <p className="text-white-50">{rideHistory.length} Trips Completed</p>
+                 </div>
+             )}
+             {activeTab === 'history' && (
+                 <div className="glass-card p-4">
+                     <h4 className="mb-4 text-warning">My Completed Trips</h4>
+                     {rideHistory.length > 0 ? rideHistory.map((r, i) => (
+                         <div key={i} className="bg-dark p-3 rounded mb-2 border border-secondary d-flex justify-content-between align-items-center">
+                            <div><p className="mb-0 fw-bold">{r[3]} ➔ {r[4]}</p><small className="text-white-50">{r[7]} • Rider Phone: {r[1]}</small></div>
+                            <h5 className="text-success fw-bold mb-0">+₹{r[5]} <span className="fs-6 text-muted">({r[6]})</span></h5>
+                         </div>
+                     )) : <p className="text-white-50">No trips completed yet!</p>}
+                 </div>
+             )}
              {activeTab === 'vehicle' && <div className="glass-card p-4"><h4>Docs</h4><p>RC Book: Verified ✅</p></div>}
-             {activeTab === 'profile' && <div className="glass-card p-4"><h4>Profile</h4><p>Name: {userData?.name}</p></div>}
+             {activeTab === 'profile' && <div className="glass-card p-4"><h4>Profile</h4><p>Name: {userData?.name || 'Captain'}</p></div>}
           </div>
       </div>
     );
@@ -401,7 +415,7 @@ export default function App() {
             if(data.type === 'new_ride') setStats(prev => ({...prev, active: data.count || data.rides}));
             if(data.type === 'complete_ride') {
                 setStats(prev => ({ active: prev.active - 1 > 0 ? prev.active - 1 : 0, completed: prev.completed + 1 }));
-                fetchDbStats(); // Refresh DB stats on completion
+                fetchDbStats(); 
             }
         });
         return () => socket.off('admin_update');
