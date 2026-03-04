@@ -109,13 +109,11 @@ export default function App() {
             <form onSubmit={handleSubmit}>
               <div className="mb-3 text-start">
                 <label className="form-label text-dark fw-bold">{role === 'admin' ? "Admin ID" : "Phone Number"}</label>
-                {/* FIX: Added text-dark and border to input */}
                 <input type="text" className="form-control bg-light text-dark p-3 border" placeholder={role === 'admin' ? "Enter Admin ID" : "Enter 10-digit mobile number"} value={phone} onChange={(e) => setPhone(e.target.value)} required />
               </div>
               {role === 'admin' && (
                 <div className="mb-3 text-start">
                   <label className="form-label text-dark fw-bold">Password</label>
-                  {/* FIX: Added text-dark and border to input */}
                   <input type="password" className="form-control bg-light text-dark p-3 border" placeholder="Enter secure password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
               )}
@@ -126,12 +124,10 @@ export default function App() {
               <h6 className="text-dark fw-bold mb-4">Welcome! Please provide your details.</h6>
               <div className="mb-3 text-start">
                 <label className="form-label text-dark fw-bold">Full Name</label>
-                {/* FIX: Added text-dark and border to input */}
                 <input type="text" className="form-control bg-light text-dark p-3 border" placeholder="Enter your full name" onChange={(e) => setName(e.target.value)} required />
               </div>
               <div className="mb-4 text-start">
                 <label className="form-label text-dark fw-bold">City</label>
-                {/* FIX: Added text-dark and border to input */}
                 <input type="text" className="form-control bg-light text-dark p-3 border" placeholder="Enter your city" onChange={(e) => setCity(e.target.value)} required />
               </div>
               <button type="submit" className="btn btn-dark w-100 py-3 fw-bold fs-5">Create Account</button>
@@ -151,7 +147,7 @@ export default function App() {
     const [rideHistory, setRideHistory] = useState([]);
     
     const [pickupLoc, setPickupLoc] = useState(`${userData?.city || 'Mumbai'} Station`);
-    const [dropLoc, setDropLoc] = useState('City Center Mall');
+    const [dropLoc, setDropLoc] = useState('');
     
     const vehicles = [
         { id: 'cab_xl', name: 'Cab XL', icon: '🚙', price: 210, min: 189, max: 231 },
@@ -173,7 +169,7 @@ export default function App() {
       socket.on('trip_fully_complete', (data) => {
           if (data.riderPhone === userData.phone) { 
               alert("Payment Successful! Ride Complete.");
-              setRideState('idle'); setCurrentRide(null); setPaymentStep('options'); setPaymentMethod('');
+              setRideState('idle'); setCurrentRide(null); setPaymentStep('options'); setPaymentMethod(''); setDropLoc('');
           }
       });
       return () => { socket.off('ride_accepted_by_captain'); socket.off('ride_started'); socket.off('ride_completed_pay_now'); socket.off('trip_fully_complete'); }
@@ -185,8 +181,12 @@ export default function App() {
       }
     }, [activeTab]);
 
+    const handleSearchVehicles = () => {
+        if(!pickupLoc || !dropLoc) return alert("Please enter both Pickup and Drop locations!");
+        setRideState('select_vehicle');
+    };
+
     const proceedToPaymentSelection = () => {
-        if(!pickupLoc || !dropLoc) return alert("Please enter locations!");
         setRideState('select_payment');
     };
 
@@ -252,23 +252,30 @@ export default function App() {
                      </div>
 
                      {rideState === 'idle' && (
-                        <>
+                        <div className="animate__animated animate__fadeIn">
+                            <h4 className="fw-bold mb-4">Where to today?</h4>
                             <div className="position-relative mb-4 p-3 border rounded-4 bg-white shadow-sm">
                                 <div className="d-flex align-items-center mb-2">
                                     <span className="text-success me-3 fs-5">●</span>
-                                    {/* FIX: Explicit text-dark on location inputs */}
-                                    <input type="text" className="form-control border-0 p-0 shadow-none fw-semibold text-dark" value={pickupLoc} onChange={(e) => setPickupLoc(e.target.value)} style={{fontSize: '15px'}} />
+                                    <input type="text" className="form-control border-0 p-0 shadow-none fw-semibold text-dark" placeholder="Enter Pickup Location" value={pickupLoc} onChange={(e) => setPickupLoc(e.target.value)} style={{fontSize: '16px'}} />
                                 </div>
                                 <div className="position-absolute" style={{left: '21px', top: '35px', bottom: '35px', borderLeft: '2px dotted #ccc'}}></div>
                                 <hr className="my-2 ms-4 text-muted opacity-25" />
                                 <div className="d-flex align-items-center mt-2">
                                     <span className="text-danger me-3 fs-5">○</span>
-                                    {/* FIX: Explicit text-dark on location inputs */}
-                                    <input type="text" className="form-control border-0 p-0 shadow-none fw-bold text-dark" value={dropLoc} onChange={(e) => setDropLoc(e.target.value)} style={{fontSize: '15px'}} />
+                                    <input type="text" className="form-control border-0 p-0 shadow-none fw-bold text-dark" placeholder="Where to?" value={dropLoc} onChange={(e) => setDropLoc(e.target.value)} style={{fontSize: '16px'}} />
                                 </div>
                             </div>
-                            
-                            <h6 className="fw-bold mb-3 text-dark">Select service</h6>
+                            <button onClick={handleSearchVehicles} className="btn btn-dark w-100 py-3 fs-5 fw-bold rounded-4 shadow-sm">Search Vehicles</button>
+                        </div>
+                     )}
+
+                     {rideState === 'select_vehicle' && (
+                        <div className="animate__animated animate__fadeInRight">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                                <h6 className="fw-bold mb-0 text-dark">Select service</h6>
+                                <button onClick={()=>setRideState('idle')} className="btn btn-sm btn-link text-muted text-decoration-none fw-bold">✎ Edit Route</button>
+                            </div>
                             <div className="d-flex flex-column gap-2 mb-4" style={{maxHeight: '300px', overflowY: 'auto'}}>
                                 {vehicles.map(v => (
                                     <div key={v.id} onClick={() => setSelectedVehicle(v)} 
@@ -285,10 +292,10 @@ export default function App() {
 
                             <div className="d-flex align-items-center mb-2 ms-2">
                                 <span className="text-primary me-2">💵</span>
-                                <small className="fw-semibold text-muted">Cash</small>
+                                <small className="fw-semibold text-muted">Cash / Online</small>
                             </div>
                             <button onClick={proceedToPaymentSelection} className="btn btn-warning text-dark w-100 py-3 fs-5 fw-bold rounded-4 shadow-sm" style={{backgroundColor: '#FFD12A', border: 'none'}}>Continue Booking</button>
-                        </>
+                        </div>
                      )}
 
                      {rideState === 'select_payment' && (
@@ -302,7 +309,7 @@ export default function App() {
                                      <span className="fs-2">💳</span> <div><h5 className="mb-0 fw-bold text-dark">Online Payment</h5><small className="text-muted">UPI, Cards, NetBanking</small></div>
                                  </button>
                              </div>
-                             <button onClick={()=>setRideState('idle')} className="btn btn-link text-dark text-decoration-none fw-bold">← Back to Vehicles</button>
+                             <button onClick={()=>setRideState('select_vehicle')} className="btn btn-link text-dark text-decoration-none fw-bold">← Back to Vehicles</button>
                          </div>
                      )}
 
@@ -351,7 +358,6 @@ export default function App() {
                                     {paymentStep === 'upi_entry' && (
                                         <div className="bg-light p-4 rounded-4 border">
                                             <h5 className="fw-bold mb-3 text-dark">Enter your UPI ID</h5>
-                                            {/* FIX: Ensure UPI input text is dark */}
                                             <input type="text" className="form-control bg-white text-dark border p-3 mb-4 text-center fs-5" placeholder="e.g. boss@ybl" value={upiIdInput} onChange={(e) => setUpiIdInput(e.target.value)} />
                                             <div className="d-flex gap-2">
                                                 <button onClick={handleUPIRequest} className="btn btn-dark flex-grow-1 py-3 fw-bold rounded-3">Request</button>
@@ -418,7 +424,25 @@ export default function App() {
               setActiveRide(null); setOtpInput('');
           }
       });
-      return () => { socket.off('incoming_ride'); socket.off('ride_started'); socket.off('otp_failed'); socket.off('trip_fully_complete'); }
+      
+      // FIX FOR MULTIPLE CAPTAINS: Remove incoming ride if someone else accepts it!
+      socket.on('ride_accepted_by_captain', (data) => {
+          setIncomingRide(prev => {
+              if (prev && prev.id === data.id) {
+                  alert("Ride already accepted by another rider! 🏍️");
+                  return null; // Remove it from the radar
+              }
+              return prev;
+          });
+      });
+
+      return () => { 
+          socket.off('incoming_ride'); 
+          socket.off('ride_started'); 
+          socket.off('otp_failed'); 
+          socket.off('trip_fully_complete'); 
+          socket.off('ride_accepted_by_captain');
+      }
     }, [activeRide]);
 
     useEffect(() => {
@@ -428,9 +452,11 @@ export default function App() {
     }, [activeTab]);
 
     const acceptRide = () => {
-      socket.emit('accept_ride', { ...incomingRide, captainName: userData?.name || 'Captain' });
-      setActiveRide({...incomingRide, status: 'accepted'});
-      setIncomingRide(null);
+      // First clear it locally, then send to backend
+      const rideToAccept = incomingRide;
+      setIncomingRide(null); 
+      socket.emit('accept_ride', { ...rideToAccept, captainName: userData?.name || 'Captain' });
+      setActiveRide({...rideToAccept, status: 'accepted'});
     };
 
     const verifyOTP = () => {
@@ -469,7 +495,6 @@ export default function App() {
                              {activeRide.status === 'accepted' ? (
                                  <div className="mt-4 p-4 border rounded-4 bg-light">
                                      <h5 className="fw-bold mb-3 text-dark">Enter OTP to Start</h5>
-                                     {/* FIX: Explicit text-dark on OTP input */}
                                      <input type="number" className="form-control bg-white text-dark border p-3 mb-3 text-center fs-4 tracking-widest" placeholder="----" value={otpInput} onChange={(e)=>setOtpInput(e.target.value)} />
                                      <button onClick={verifyOTP} className="btn btn-dark w-100 py-3 fw-bold fs-5 rounded-4">Verify & Start Ride</button>
                                  </div>
