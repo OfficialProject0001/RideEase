@@ -78,7 +78,6 @@ export default function App() {
       try {
         const payload = role === 'admin' ? { phone, password } : { phone };
         const res = await axios.post(`${SERVER_URL}/api/login`, payload);
-
         if (res.data.isNew && role !== 'admin') { setAuthStep('register'); } 
         else if (!res.data.isNew) { finalizeLogin(res.data.user); } 
         else { alert("Invalid Credentials"); }
@@ -186,9 +185,7 @@ export default function App() {
         setRideState('select_vehicle');
     };
 
-    const proceedToPaymentSelection = () => {
-        setRideState('select_payment');
-    };
+    const proceedToPaymentSelection = () => setRideState('select_payment');
 
     const confirmAndRequestRide = (method) => {
         setPaymentMethod(method);
@@ -406,7 +403,7 @@ export default function App() {
   };
 
   // ==========================================
-  // CAPTAIN PANEL
+  // CAPTAIN PANEL (RACE CONDITION FIX)
   // ==========================================
   const CaptainPanel = () => {
     const [incomingRide, setIncomingRide] = useState(null);
@@ -425,25 +422,36 @@ export default function App() {
           }
       });
       
-      // FIX FOR MULTIPLE CAPTAINS: Remove incoming ride if someone else accepts it!
+      // THE FIX: Listen to who actually got the ride
       socket.on('ride_accepted_by_captain', (data) => {
-          setIncomingRide(prev => {
-              if (prev && prev.id === data.id) {
-                  alert("Ride already accepted by another rider! 🏍️");
-                  return null; // Remove it from the radar
-              }
-              return prev;
-          });
+          if (data.captainPhone === userData?.phone) {
+              // I am the winner! 🏆
+              setActiveRide(data);
+              setIncomingRide(null);
+          } else {
+              // I lost! Another captain clicked a millisecond faster 🛑
+              setIncomingRide(prev => {
+                  if (prev && prev.id === data.id) {
+                      alert(`Ride accepted by another Captain (${data.captain}) 🏍️`);
+                      return null;
+                  }
+                  return prev;
+              });
+              setActiveRide(prev => {
+                  if (prev && prev.id === data.id && prev.status === 'confirming') {
+                      alert("Too late! Another captain got this ride just a millisecond before you.");
+                      return null;
+                  }
+                  return prev;
+              });
+          }
       });
 
       return () => { 
-          socket.off('incoming_ride'); 
-          socket.off('ride_started'); 
-          socket.off('otp_failed'); 
-          socket.off('trip_fully_complete'); 
-          socket.off('ride_accepted_by_captain');
+          socket.off('incoming_ride'); socket.off('ride_started'); socket.off('otp_failed'); 
+          socket.off('trip_fully_complete'); socket.off('ride_accepted_by_captain'); 
       }
-    }, [activeRide]);
+    }, [activeRide, userData]);
 
     useEffect(() => {
       if(activeTab === 'history' || activeTab === 'earnings') {
@@ -452,11 +460,11 @@ export default function App() {
     }, [activeTab]);
 
     const acceptRide = () => {
-      // First clear it locally, then send to backend
       const rideToAccept = incomingRide;
-      setIncomingRide(null); 
-      socket.emit('accept_ride', { ...rideToAccept, captainName: userData?.name || 'Captain' });
-      setActiveRide({...rideToAccept, status: 'accepted'});
+      setIncomingRide(null);
+      // Wait for server to confirm I won
+      setActiveRide({...rideToAccept, status: 'confirming'});
+      socket.emit('accept_ride', { ...rideToAccept, captainName: userData?.name || 'Captain', captainPhone: userData?.phone });
     };
 
     const verifyOTP = () => {
@@ -485,21 +493,32 @@ export default function App() {
 
                      {activeRide ? (
                          <div className="bg-white p-5 rounded-4 shadow-sm border text-center animate__animated animate__fadeIn">
-                             <h3 className="text-success fw-bold mb-4">Status: {activeRide.status === 'in_progress' ? 'ON RIDE 🚀' : 'ARRIVED 📍'}</h3>
-                             <div className="bg-light p-4 rounded-4 border mb-4 text-start">
-                                 <p className="mb-2 text-dark"><strong>Vehicle Req:</strong> {activeRide.vehicle}</p>
-                                 <p className="mb-2 text-dark"><strong>Rider:</strong> {activeRide.riderName} ({activeRide.riderPhone})</p>
-                                 <p className="mb-2 text-dark"><strong>From:</strong> {activeRide.pickup}</p>
-                                 <p className="mb-0 text-dark"><strong>To:</strong> {activeRide.drop}</p>
-                             </div>
-                             {activeRide.status === 'accepted' ? (
-                                 <div className="mt-4 p-4 border rounded-4 bg-light">
-                                     <h5 className="fw-bold mb-3 text-dark">Enter OTP to Start</h5>
-                                     <input type="number" className="form-control bg-white text-dark border p-3 mb-3 text-center fs-4 tracking-widest" placeholder="----" value={otpInput} onChange={(e)=>setOtpInput(e.target.value)} />
-                                     <button onClick={verifyOTP} className="btn btn-dark w-100 py-3 fw-bold fs-5 rounded-4">Verify & Start Ride</button>
-                                 </div>
+                             {/* THE FIX: Show confirming spinner while server decides winner */}
+                             {activeRide.status === 'confirming' ? (
+                                 <>
+                                     <div className="spinner-border text-warning mb-3"></div>
+                                     <h3 className="fw-bold text-dark">Confirming with Server...</h3>
+                                     <p className="text-muted">Checking if you got the ride first!</p>
+                                 </>
                              ) : (
-                                 <button onClick={() => socket.emit('finish_ride', activeRide)} className="btn btn-danger w-100 py-3 fs-5 fw-bold mt-4 rounded-4">End Ride & Collect Payment</button>
+                                 <>
+                                     <h3 className="text-success fw-bold mb-4">Status: {activeRide.status === 'in_progress' ? 'ON RIDE 🚀' : 'ARRIVED 📍'}</h3>
+                                     <div className="bg-light p-4 rounded-4 border mb-4 text-start">
+                                         <p className="mb-2 text-dark"><strong>Vehicle Req:</strong> {activeRide.vehicle}</p>
+                                         <p className="mb-2 text-dark"><strong>Rider:</strong> {activeRide.riderName} ({activeRide.riderPhone})</p>
+                                         <p className="mb-2 text-dark"><strong>From:</strong> {activeRide.pickup}</p>
+                                         <p className="mb-0 text-dark"><strong>To:</strong> {activeRide.drop}</p>
+                                     </div>
+                                     {activeRide.status === 'accepted' ? (
+                                         <div className="mt-4 p-4 border rounded-4 bg-light">
+                                             <h5 className="fw-bold mb-3 text-dark">Enter OTP to Start</h5>
+                                             <input type="number" className="form-control bg-white text-dark border p-3 mb-3 text-center fs-4 tracking-widest" placeholder="----" value={otpInput} onChange={(e)=>setOtpInput(e.target.value)} />
+                                             <button onClick={verifyOTP} className="btn btn-dark w-100 py-3 fw-bold fs-5 rounded-4">Verify & Start Ride</button>
+                                         </div>
+                                     ) : (
+                                         <button onClick={() => socket.emit('finish_ride', activeRide)} className="btn btn-danger w-100 py-3 fs-5 fw-bold mt-4 rounded-4">End Ride & Collect Payment</button>
+                                     )}
+                                 </>
                              )}
                          </div>
                      ) : incomingRide ? (
