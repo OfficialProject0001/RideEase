@@ -4,16 +4,13 @@ import { io } from 'socket.io-client';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
-// ⚠️ APNA RENDER BACKEND LINK YAHAN DAALEIN (No trailing slash)
 const SERVER_URL = "https://rideease-4m7a.onrender.com"; 
 const socket = io(SERVER_URL, { autoConnect: false });
-
-// ⚠️ RAZORPAY KEY
 const RAZORPAY_KEY_ID = "rzp_test_YOUR_KEY_HERE";
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('landing'); 
-  const [role, setRole] = useState(null); 
+  const [currentView, setCurrentView] = useState('landing');
+  const [role, setRole] = useState(null);
   const [userData, setUserData] = useState(null);
   const [activeTab, setActiveTab] = useState('home');
 
@@ -22,13 +19,15 @@ export default function App() {
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
     document.body.appendChild(script);
+  }, []);
 
+  useEffect(() => {
     const savedUser = localStorage.getItem('rideease_user');
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
       setUserData(parsedUser);
       setRole(parsedUser.role);
-      socket.connect(); 
+      socket.connect();
       setCurrentView('dashboard');
       setActiveTab(parsedUser.role === 'captain' ? 'radar' : parsedUser.role === 'admin' ? 'dash' : 'home');
     }
@@ -36,120 +35,187 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('rideease_user');
-    setUserData(null); setRole(null); setCurrentView('landing');
+    setUserData(null);
+    setRole(null);
+    setCurrentView('landing');
     socket.disconnect();
   };
 
   const navigateTo = (view, newRole = null) => {
-      if(newRole) setRole(newRole);
-      setCurrentView(view);
+    if (newRole) setRole(newRole);
+    setCurrentView(view);
   };
 
-  // ==========================================
-  // 1. AUTHENTICATION & LANDING
-  // ==========================================
-  const LandingPage = () => (
-      <div className="container min-vh-100 d-flex flex-column justify-content-center align-items-center text-center text-white">
-          <h1 className="display-3 fw-bold mb-3"><span className="text-warning">Ride</span>Ease</h1>
-          <p className="lead mb-5 text-white-50">Boss, Your Journey Starts Here.</p>
-          <div className="glass-card p-5 d-flex flex-column gap-3 shadow-lg" style={{width: '380px'}}>
-             <button onClick={() => navigateTo('login', 'customer')} className="btn btn-warning w-100 py-3 fw-bold fs-5">Login as Customer</button>
-             <button onClick={() => navigateTo('login', 'captain')} className="btn btn-outline-warning w-100 py-3 fw-bold fs-5">Login as Captain</button>
-             <hr className="border-secondary my-3"/>
-             <button onClick={() => navigateTo('login', 'admin')} className="btn btn-dark text-danger border border-danger w-100">Admin Portal</button>
-          </div>
-      </div>
+  const BackButton = ({ onClick }) => (
+    <div className="position-absolute top-0 start-0 m-4">
+      <button onClick={onClick} className="btn btn-dark rounded-circle" style={{ width: '45px', height: '45px' }}>←</button>
+    </div>
   );
 
+  // ---------------- LANDING ----------------
+  const LandingPage = () => (
+    <div className="container min-vh-100 d-flex flex-column justify-content-center align-items-center text-center">
+      <h1 className="display-3 fw-bold mb-2"><span className="text-warning">Ride</span>Ease</h1>
+      <div className="glass-card p-4 mt-5 d-flex flex-column gap-3 shadow-lg" style={{ width: '350px' }}>
+        <button onClick={() => navigateTo('login', 'customer')} className="btn btn-warning py-3 fw-bold fs-5">Rider Login</button>
+        <button onClick={() => navigateTo('login', 'captain')} className="btn btn-outline-warning py-3 fw-bold fs-5">Captain Login</button>
+        <hr className="border-secondary my-3"/>
+        <button onClick={() => navigateTo('login', 'admin')} className="btn btn-dark text-danger border border-danger w-100">Admin Panel</button>
+      </div>
+    </div>
+  );
+
+  // ---------------- AUTH PAGE (Aapka Labels Wala Code) ----------------
   const AuthPage = () => {
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [city, setCity] = useState('');
-    const [isRegistering, setIsRegistering] = useState(false);
-    
+    const [authStep, setAuthStep] = useState('phone');
+
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            const payload = role === 'admin' ? { phone, password } : { phone };
-            const res = await axios.post(`${SERVER_URL}/api/login`, payload);
-            if(res.data.isNew && role !== 'admin') {
-                 setIsRegistering(true);
-            } else if (!res.data.isNew) {
-                finalizeLogin(res.data.user);
-            } else {
-                alert("Incorrect Admin ID or Password!");
-            }
-        } catch(e) { alert("Server is waking up, retry in 10 seconds!"); }
+      e.preventDefault();
+      try {
+        const payload = role === 'admin' ? { phone, password } : { phone };
+        const res = await axios.post(`${SERVER_URL}/api/login`, payload);
+
+        if (res.data.isNew && role !== 'admin') {
+          setAuthStep('register');
+        } else if (!res.data.isNew) {
+          finalizeLogin(res.data.user);
+        } else {
+          alert("Invalid Credentials");
+        }
+      } catch {
+        alert("Server is waking up, retry in 10 seconds!");
+      }
     };
 
     const handleRegister = async (e) => {
-        e.preventDefault();
-        const newUser = { phone, name, city, role };
-        try {
-            await axios.post(`${SERVER_URL}/api/register`, newUser);
-            finalizeLogin(newUser);
-        } catch (err) { alert("Error registering. Number might exist."); }
+      e.preventDefault();
+      const newUser = { phone, name, city, role };
+      await axios.post(`${SERVER_URL}/api/register`, newUser);
+      finalizeLogin(newUser);
     };
 
     const finalizeLogin = (user) => {
-        localStorage.setItem('rideease_user', JSON.stringify(user));
-        setUserData(user); socket.connect();
-        setActiveTab(role === 'captain' ? 'radar' : role === 'admin' ? 'dash' : 'home');
-        setCurrentView('dashboard');
+      localStorage.setItem('rideease_user', JSON.stringify(user));
+      setUserData(user);
+      socket.connect();
+      setActiveTab(role === 'captain' ? 'radar' : role === 'admin' ? 'dash' : 'home');
+      setCurrentView('dashboard');
     };
 
     return (
-        <div className="container min-vh-100 d-flex justify-content-center align-items-center">
-            <button onClick={()=>navigateTo('landing')} className="btn btn-dark position-absolute top-0 start-0 m-4">← Back</button>
-            <div className="glass-card p-5 text-white" style={{width: '400px'}}>
-                <h3 className="mb-4 text-center text-warning fw-bold">{role.toUpperCase()} LOGIN</h3>
-                {!isRegistering ? (
-                    <form onSubmit={handleSubmit}>
-                        <label className="small text-white-50 mb-1">{role === 'admin' ? "Admin ID" : "Phone Number"}</label>
-                        <input type="text" className="form-control bg-dark text-white p-3 mb-3 border-secondary" value={phone} onChange={(e)=>setPhone(e.target.value)} required />
-                        {role === 'admin' && (
-                             <>
-                             <label className="small text-white-50 mb-1">Admin Password</label>
-                             <input type="password" placeholder="e.g. Rohit2580@" className="form-control bg-dark text-white p-3 mb-4 border-secondary" value={password} onChange={(e)=>setPassword(e.target.value)} required />
-                             </>
-                        )}
-                        <button type="submit" className="btn btn-warning w-100 py-3 fw-bold">Continue</button>
-                    </form>
-                ) : (
-                    <form onSubmit={handleRegister}>
-                        <label className="small text-white-50 mb-1">Full Name</label>
-                        <input type="text" className="form-control bg-dark text-white p-3 mb-3 border-secondary" onChange={(e)=>setName(e.target.value)} required />
-                        <label className="small text-white-50 mb-1">City</label>
-                        <input type="text" className="form-control bg-dark text-white p-3 mb-4 border-secondary" onChange={(e)=>setCity(e.target.value)} required />
-                        <button type="submit" className="btn btn-warning w-100 py-3 fw-bold">Create Account</button>
-                    </form>
-                )}
-            </div>
+      <div className="container min-vh-100 d-flex justify-content-center align-items-center">
+        <BackButton onClick={() => navigateTo('landing')} />
+        <div className="glass-card p-5" style={{ width: '420px' }}>
+          <h4 className="mb-4 text-center text-warning fw-bold">{role?.toUpperCase()} LOGIN</h4>
+
+          {authStep === 'phone' ? (
+            <form onSubmit={handleSubmit}>
+
+              <div className="mb-3 text-start">
+                <label className="form-label text-warning fw-semibold">
+                  {role === 'admin' ? "Admin ID" : "Phone Number"}
+                </label>
+                <input
+                  type="text"
+                  className="form-control bg-dark text-white p-3 border-secondary"
+                  placeholder={role === 'admin' ? "Enter Admin ID" : "Enter 10-digit mobile number"}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
+                <small className="text-white-50">
+                  {role === 'admin'
+                    ? "Use official admin credentials"
+                    : "Must be registered number"}
+                </small>
+              </div>
+
+              {role === 'admin' && (
+                <div className="mb-3 text-start">
+                  <label className="form-label text-warning fw-semibold">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    className="form-control bg-dark text-white p-3 border-secondary"
+                    placeholder="Enter secure password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <small className="text-white-50">Password is case-sensitive</small>
+                </div>
+              )}
+
+              <button type="submit" className="btn btn-warning w-100 py-3 mt-3 fw-bold">
+                Continue
+              </button>
+
+            </form>
+          ) : (
+            <form onSubmit={handleRegister}>
+
+              <div className="mb-3 text-start">
+                <label className="form-label text-warning fw-semibold">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  className="form-control bg-dark text-white p-3 border-secondary"
+                  placeholder="Enter your full name"
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="mb-4 text-start">
+                <label className="form-label text-warning fw-semibold">
+                  City
+                </label>
+                <input
+                  type="text"
+                  className="form-control bg-dark text-white p-3 border-secondary"
+                  placeholder="Enter your city"
+                  onChange={(e) => setCity(e.target.value)}
+                  required
+                />
+                <small className="text-white-50">
+                  This helps us find nearby captains
+                </small>
+              </div>
+
+              <button type="submit" className="btn btn-warning w-100 py-3 fw-bold">
+                Create Account
+              </button>
+
+            </form>
+          )}
         </div>
+      </div>
     );
   };
 
   // ==========================================
-  // 2. CUSTOMER PANEL (5 Options + Payment Post-Ride)
+  // CUSTOMER PANEL
   // ==========================================
   const CustomerPanel = () => {
-    const [rideState, setRideState] = useState('idle'); // idle, searching, accepted, payment_pending
+    const [rideState, setRideState] = useState('idle'); 
     const [currentRide, setCurrentRide] = useState(null);
     const fareAmount = 150; 
 
     useEffect(() => {
-      // 1. Ride Accepted by Captain
       socket.on('ride_accepted_by_captain', (data) => {
           if (data.riderPhone === userData.phone) {
              setCurrentRide(data); setRideState('accepted');
           }
       });
-      // 2. Ride Finished by Captain -> Time to pay!
       socket.on('ride_completed_pay_now', (data) => {
           if (data.riderPhone === userData.phone) { setRideState('payment_pending'); }
       });
-      // 3. Trip Fully Complete
       socket.on('trip_fully_complete', (data) => {
           if (data.riderPhone === userData.phone) { 
               alert("Payment Successful! Ride Complete.");
@@ -157,7 +223,7 @@ export default function App() {
           }
       });
       return () => { socket.off('ride_accepted_by_captain'); socket.off('ride_completed_pay_now'); socket.off('trip_fully_complete'); }
-    }, [userData]);
+    }, []);
 
     const bookRide = () => {
         setRideState('searching');
@@ -186,7 +252,6 @@ export default function App() {
 
     return (
       <div className="container-fluid min-vh-100 p-0 row m-0 text-white bg-dark">
-          {/* Customer Sidebar (5 Options) */}
           <div className="col-md-3 border-end border-secondary p-4 d-flex flex-column h-100 min-vh-100">
               <div className="text-center mb-4">
                   <h4 className="text-warning fw-bold">Customer Hub</h4>
@@ -200,8 +265,7 @@ export default function App() {
               <button onClick={handleLogout} className="btn btn-danger w-100 mt-auto">Logout</button>
           </div>
           
-          {/* Customer Main Area */}
-          <div className="col-md-9 p-5 position-relative">
+          <div className="col-md-9 p-5">
              {activeTab === 'home' && (
                  <div className="glass-card p-5 mx-auto animate__animated animate__fadeIn" style={{maxWidth:'550px'}}>
                      {rideState === 'idle' && (
@@ -239,8 +303,6 @@ export default function App() {
                      )}
                  </div>
              )}
-             
-             {/* Other Working Tabs for Customer */}
              {activeTab === 'history' && <div className="glass-card p-4"><h4>Past Rides</h4><p className="text-success">Station to Mall - ₹150 (Completed)</p></div>}
              {activeTab === 'wallet' && <div className="glass-card p-4"><h4>Wallet</h4><h2>₹0.00</h2><button className="btn btn-warning mt-3">Add Money</button></div>}
              {activeTab === 'refer' && <div className="glass-card p-4 text-center"><h4>Refer Code: RIDE-{userData?.phone.slice(0,4)}</h4><p>Share to get ₹50 off!</p></div>}
@@ -251,17 +313,14 @@ export default function App() {
   };
 
   // ==========================================
-  // 3. CAPTAIN PANEL (5 Options & Live Radar)
+  // CAPTAIN PANEL
   // ==========================================
   const CaptainPanel = () => {
     const [incomingRide, setIncomingRide] = useState(null);
     const [activeRide, setActiveRide] = useState(null);
 
     useEffect(() => {
-      // Listen for broadcasts from customers
       socket.on('incoming_ride', (data) => { if(!activeRide) setIncomingRide(data); });
-      
-      // Listen for payment completion from customer
       socket.on('trip_fully_complete', (data) => {
           if(activeRide && activeRide.id === data.id) {
               alert(`Payment of ₹${data.fare} received via ${data.paymentMethod}!`);
@@ -278,13 +337,11 @@ export default function App() {
     };
 
     const markRideComplete = () => {
-        // Send signal to customer that ride is over, show them payment screen
         socket.emit('finish_ride', activeRide);
     };
 
     return (
       <div className="container-fluid min-vh-100 p-0 row m-0 text-white bg-dark">
-          {/* Captain Sidebar (5 Options) */}
           <div className="col-md-3 border-end border-secondary p-4 d-flex flex-column h-100 min-vh-100">
               <div className="text-center mb-4">
                   <h4 className="text-warning fw-bold">Captain Hub</h4>
@@ -298,8 +355,7 @@ export default function App() {
               <button onClick={handleLogout} className="btn btn-danger w-100 mt-auto">Go Offline (Logout)</button>
           </div>
           
-          {/* Captain Main Area */}
-          <div className="col-md-9 p-5 position-relative">
+          <div className="col-md-9 p-5">
              {activeTab === 'radar' && (
                  <div className="mx-auto" style={{maxWidth:'600px'}}>
                      {activeRide ? (
@@ -333,8 +389,6 @@ export default function App() {
                      )}
                  </div>
              )}
-             
-             {/* Other Working Tabs for Captain */}
              {activeTab === 'earnings' && <div className="glass-card p-4"><h4>Today's Earnings</h4><h1 className="text-success">₹850</h1><p>6 Trips Completed</p></div>}
              {activeTab === 'history' && <div className="glass-card p-4"><h4>Past Trips</h4><p>Station to Mall - ₹150</p></div>}
              {activeTab === 'vehicle' && <div className="glass-card p-4"><h4>Docs</h4><p>RC Book: Verified ✅</p><p>License: Verified ✅</p></div>}
@@ -345,22 +399,21 @@ export default function App() {
   };
 
   // ==========================================
-  // 4. ADMIN PANEL (5 Options & Live DB Stats)
+  // ADMIN PANEL
   // ==========================================
   const AdminPanel = () => {
     const [stats, setStats] = useState({ active: 0, completed: 0 });
 
     useEffect(() => {
         socket.on('admin_update', (data) => {
-            if(data.type === 'new_ride') setStats(prev => ({...prev, active: data.rides}));
-            if(data.type === 'complete_ride') setStats({ active: data.rides, completed: data.completed });
+            if(data.type === 'new_ride') setStats(prev => ({...prev, active: data.count || data.rides}));
+            if(data.type === 'complete_ride') setStats(prev => ({ active: prev.active - 1 > 0 ? prev.active - 1 : 0, completed: prev.completed + 1 }));
         });
         return () => socket.off('admin_update');
     }, []);
 
     return (
       <div className="container-fluid min-vh-100 p-0 row m-0 bg-dark text-white">
-          {/* Admin Sidebar (5 Options) */}
           <div className="col-md-3 border-end border-danger p-4 d-flex flex-column h-100 min-vh-100">
               <h4 className="text-danger fw-bold mb-5 mt-2">Admin Control</h4>
               <button onClick={() => setActiveTab('dash')} className={`btn text-start mb-2 ${activeTab==='dash'?'btn-danger':'btn-outline-secondary text-white'}`}>📈 Live Dashboard</button>
@@ -386,8 +439,6 @@ export default function App() {
                   </div>
                   </>
               )}
-
-              {/* Other Working Tabs for Admin */}
               {activeTab === 'liverides' && <div className="glass-card p-4"><h4>Live Map Tracking</h4><p>Tracking {stats.active} vehicles on map...</p></div>}
               {activeTab === 'users' && <div className="glass-card p-4"><h4>User Database</h4><p>Total Registered Customers: 142</p></div>}
               {activeTab === 'captains' && <div className="glass-card p-4"><h4>Pending Verifications</h4><p className="text-danger">0 Captains Pending</p></div>}
@@ -400,9 +451,11 @@ export default function App() {
   // ==========================================
   // ROUTER
   // ==========================================
-  if(currentView === 'login') return <AuthPage />;
-  if(currentView === 'dashboard' && role === 'customer') return <CustomerPanel />;
-  if(currentView === 'dashboard' && role === 'captain') return <CaptainPanel />;
-  if(currentView === 'dashboard' && role === 'admin') return <AdminPanel />;
+  if (currentView === 'login') return <AuthPage />;
+  if (currentView === 'dashboard') {
+      if (role === 'customer') return <CustomerPanel />;
+      if (role === 'captain') return <CaptainPanel />;
+      if (role === 'admin') return <AdminPanel />;
+  }
   return <LandingPage />;
 }
