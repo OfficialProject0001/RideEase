@@ -22,7 +22,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('rideease_user');
+    const savedUser = sessionStorage.getItem('rideease_user'); 
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
       setUserData(parsedUser);
@@ -34,8 +34,10 @@ export default function App() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('rideease_user');
-    setUserData(null); setRole(null); setCurrentView('landing');
+    sessionStorage.removeItem('rideease_user'); 
+    setUserData(null);
+    setRole(null);
+    setCurrentView('landing');
     socket.disconnect();
   };
 
@@ -77,11 +79,14 @@ export default function App() {
       try {
         const payload = role === 'admin' ? { phone, password } : { phone };
         const res = await axios.post(`${SERVER_URL}/api/login`, payload);
+
         if (res.data.isNew && role !== 'admin') {
           setAuthStep('register');
         } else if (!res.data.isNew) {
           finalizeLogin(res.data.user);
-        } else { alert("Invalid Credentials"); }
+        } else {
+          alert("Invalid Credentials");
+        }
       } catch { alert("Server is waking up, retry in 10 seconds!"); }
     };
 
@@ -93,8 +98,9 @@ export default function App() {
     };
 
     const finalizeLogin = (user) => {
-      localStorage.setItem('rideease_user', JSON.stringify(user));
-      setUserData(user); socket.connect();
+      sessionStorage.setItem('rideease_user', JSON.stringify(user)); 
+      setUserData(user);
+      socket.connect();
       setActiveTab(role === 'captain' ? 'radar' : role === 'admin' ? 'dash' : 'home');
       setCurrentView('dashboard');
     };
@@ -104,12 +110,12 @@ export default function App() {
         <BackButton onClick={() => navigateTo('landing')} />
         <div className="glass-card p-5" style={{ width: '420px' }}>
           <h4 className="mb-4 text-center text-warning fw-bold">{role?.toUpperCase()} LOGIN</h4>
+
           {authStep === 'phone' ? (
             <form onSubmit={handleSubmit}>
               <div className="mb-3 text-start">
                 <label className="form-label text-warning fw-semibold">{role === 'admin' ? "Admin ID" : "Phone Number"}</label>
                 <input type="text" className="form-control bg-dark text-white p-3 border-secondary" placeholder={role === 'admin' ? "Enter Admin ID" : "Enter 10-digit mobile number"} value={phone} onChange={(e) => setPhone(e.target.value)} required />
-                <small className="text-white-50">{role === 'admin' ? "Use official admin credentials" : "Agar naya number hai, toh Name aage mangega"}</small>
               </div>
               {role === 'admin' && (
                 <div className="mb-3 text-start">
@@ -120,7 +126,7 @@ export default function App() {
               <button type="submit" className="btn btn-warning w-100 py-3 mt-3 fw-bold">Continue</button>
             </form>
           ) : (
-            <form onSubmit={handleRegister} className="animate__animated animate__fadeInRight">
+            <form onSubmit={handleRegister}>
               <h6 className="text-success mb-3">Welcome! Please provide your details.</h6>
               <div className="mb-3 text-start">
                 <label className="form-label text-warning fw-semibold">Full Name</label>
@@ -145,10 +151,14 @@ export default function App() {
     const [rideState, setRideState] = useState('idle'); 
     const [currentRide, setCurrentRide] = useState(null);
     const [rideHistory, setRideHistory] = useState([]);
+    
     const [pickupLoc, setPickupLoc] = useState(`${userData?.city || 'Mumbai'} Station`);
     const [dropLoc, setDropLoc] = useState('City Center Mall');
-    const [showQR, setShowQR] = useState(false);
     const fareAmount = 150; 
+
+    // Payment States
+    const [paymentStep, setPaymentStep] = useState('options'); // 'options', 'upi_entry', 'processing_upi', 'qr_view'
+    const [upiIdInput, setUpiIdInput] = useState('');
 
     useEffect(() => {
       socket.on('ride_accepted_by_captain', (data) => { if (data.riderPhone === userData.phone) { setCurrentRide(data); setRideState('accepted'); } });
@@ -157,7 +167,7 @@ export default function App() {
       socket.on('trip_fully_complete', (data) => {
           if (data.riderPhone === userData.phone) { 
               alert("Payment Successful! Ride Complete.");
-              setRideState('idle'); setCurrentRide(null); setShowQR(false);
+              setRideState('idle'); setCurrentRide(null); setPaymentStep('options'); setUpiIdInput('');
           }
       });
       return () => { socket.off('ride_accepted_by_captain'); socket.off('ride_started'); socket.off('ride_completed_pay_now'); socket.off('trip_fully_complete'); }
@@ -188,6 +198,18 @@ export default function App() {
     };
 
     const handleCashPayment = () => saveRideToDBAndFinish('Cash');
+
+    const handleUPIRequest = () => {
+        if(!upiIdInput.includes('@')) {
+            return alert("Please enter a valid UPI ID (e.g., name@ybl)");
+        }
+        setPaymentStep('processing_upi');
+        // Simulate real-time UPI request approval (Wait for 4 seconds)
+        setTimeout(() => {
+            saveRideToDBAndFinish('UPI');
+        }, 4000); 
+    };
+
     const handleOnlinePayment = async () => {
       try {
         const orderRes = await axios.post(`${SERVER_URL}/api/create-order`, { amount: fareAmount });
@@ -195,12 +217,15 @@ export default function App() {
             const options = {
               key: RAZORPAY_KEY_ID, amount: orderRes.data.amount, currency: "INR", name: "RideEase",
               description: "Ride Fare", order_id: orderRes.data.id,
-              handler: () => saveRideToDBAndFinish('Online'),
+              handler: () => saveRideToDBAndFinish('Card/NetBanking'),
               prefill: { name: userData.name, contact: userData.phone }, theme: { color: "#fbbf24" }
             };
             new window.Razorpay(options).open();
         } else { throw new Error("No Keys"); }
-      } catch (err) { setShowQR(true); }
+      } catch (err) { 
+        // Fallback: Show QR Code silently
+        setPaymentStep('qr_view');
+      }
     };
 
     return (
@@ -208,7 +233,7 @@ export default function App() {
           <div className="col-md-3 border-end border-secondary p-4 d-flex flex-column h-100 min-vh-100">
               <div className="text-center mb-4">
                   <h4 className="text-warning fw-bold">Customer Hub</h4>
-                  <p className="text-white-50">Hello, <span className="text-white fw-bold">{userData?.name || userData?.phone || 'Boss'}</span></p>
+                  <p className="text-white-50">Hello, <span className="text-white fw-bold">{userData?.name || userData?.phone}</span></p>
               </div>
               <button onClick={() => setActiveTab('home')} className={`btn text-start mb-2 ${activeTab==='home'?'btn-warning':'btn-outline-secondary text-white'}`}>📍 Book Ride</button>
               <button onClick={() => setActiveTab('history')} className={`btn text-start mb-2 ${activeTab==='history'?'btn-warning':'btn-outline-secondary text-white'}`}>📜 My History</button>
@@ -220,7 +245,7 @@ export default function App() {
           
           <div className="col-md-9 p-5">
              {activeTab === 'home' && (
-                 <div className="glass-card p-5 mx-auto animate__animated animate__fadeIn" style={{maxWidth:'550px'}}>
+                 <div className="glass-card p-5 mx-auto animate__animated animate__fadeIn" style={{maxWidth:'600px'}}>
                      {rideState === 'idle' && (
                         <>
                             <h3 className="mb-4 fw-bold">Where to today?</h3>
@@ -228,36 +253,75 @@ export default function App() {
                             <input type="text" className="form-control bg-dark text-white p-3 mb-3 border-warning" value={pickupLoc} onChange={(e) => setPickupLoc(e.target.value)} />
                             <label className="small text-white-50 mb-1">Drop Location</label>
                             <input type="text" className="form-control bg-dark text-white p-3 mb-4 border-warning" value={dropLoc} onChange={(e) => setDropLoc(e.target.value)} />
+                            
+                            <div className="mb-4 rounded overflow-hidden" style={{height: '150px'}}>
+                                <iframe width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src="https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.9%2C73.1%2C19.3&amp;layer=mapnik" style={{border: '1px solid #444', filter: 'invert(90%) hue-rotate(180deg)'}}></iframe>
+                            </div>
+
                             <button onClick={bookRide} className="btn btn-warning w-100 py-3 fs-5 fw-bold">Find Captain (₹{fareAmount})</button>
                         </>
                      )}
                      {rideState === 'searching' && (
-                         <div className="text-center py-5"><div className="spinner-border text-warning mb-3"></div><h4 className="text-warning">Searching for Captains...</h4></div>
+                         <div className="text-center py-5">
+                             <div className="spinner-border text-warning mb-3"></div>
+                             <h4 className="text-warning">Searching for Captains...</h4>
+                         </div>
                      )}
                      {rideState === 'accepted' && (
                          <div className="text-center py-4">
                             <h3 className="text-success fw-bold mb-3">Captain {currentRide?.captain} is arriving! 🏍️</h3>
                             <div className="bg-dark border border-warning rounded p-4 my-4"><p className="text-white-50 mb-1">Your Ride OTP</p><h1 className="text-warning fw-bold letter-spacing-3">{currentRide?.otp}</h1></div>
-                            <p className="text-white-50">Share this OTP with your captain to start the ride.</p>
                          </div>
                      )}
                      {rideState === 'in_progress' && (
                          <div className="text-center py-5"><h2 className="text-primary fw-bold mb-3">Ride is in Progress 🚀</h2><div className="spinner-grow text-primary mt-4"></div></div>
                      )}
+                     
+                     {/* ================= PAYMENT SCREEN ================= */}
                      {rideState === 'payment_pending' && (
                          <div className="text-center py-4 animate__animated animate__bounceIn">
                             <h2 className="text-warning fw-bold mb-3">Destination Reached!</h2>
                             <h1 className="text-white mb-4">₹{fareAmount}</h1>
-                            {!showQR ? (
+
+                            {/* Option 1: Main Menu */}
+                            {paymentStep === 'options' && (
                                 <div className="d-flex flex-column gap-3">
-                                    <button onClick={handleOnlinePayment} className="btn btn-success py-3 fw-bold fs-5">Pay Online (Razorpay)</button>
+                                    <button onClick={() => setPaymentStep('upi_entry')} className="btn btn-primary py-3 fw-bold fs-5 d-flex align-items-center justify-content-center gap-2">
+                                        Pay via UPI ID
+                                    </button>
+                                    <button onClick={handleOnlinePayment} className="btn btn-success py-3 fw-bold fs-5">Pay via Card / NetBanking</button>
                                     <button onClick={handleCashPayment} className="btn btn-outline-light py-3 fw-bold fs-5">I will Pay Cash</button>
                                 </div>
-                            ) : (
+                            )}
+
+                            {/* Option 2: Enter UPI ID Box */}
+                            {paymentStep === 'upi_entry' && (
+                                <div className="bg-dark p-4 rounded border border-secondary animate__animated animate__fadeIn">
+                                    <h5 className="text-warning mb-3">Enter your UPI ID</h5>
+                                    <input type="text" className="form-control bg-dark text-white p-3 mb-4 border-secondary text-center fs-5" placeholder="e.g. boss@ybl" value={upiIdInput} onChange={(e) => setUpiIdInput(e.target.value)} />
+                                    <div className="d-flex gap-2">
+                                        <button onClick={handleUPIRequest} className="btn btn-success flex-grow-1 py-3 fw-bold">Request Payment</button>
+                                        <button onClick={() => setPaymentStep('options')} className="btn btn-outline-danger py-3 px-4 fw-bold">Cancel</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Option 3: Processing UPI (4 seconds wait) */}
+                            {paymentStep === 'processing_upi' && (
+                                <div className="bg-dark p-4 rounded border border-secondary animate__animated animate__pulse animate__infinite">
+                                    <div className="spinner-border text-primary mb-3"></div>
+                                    <h5 className="text-primary fw-bold mb-2">Request sent to {upiIdInput}</h5>
+                                    <p className="text-white-50 mb-0">Please open your UPI app and enter your PIN to approve the payment of ₹{fareAmount}.</p>
+                                    <p className="text-warning mt-3 mb-0 fw-bold">Waiting for confirmation...</p>
+                                </div>
+                            )}
+
+                            {/* Option 4: QR Code Fallback */}
+                            {paymentStep === 'qr_view' && (
                                 <div className="bg-dark p-4 rounded border border-secondary animate__animated animate__zoomIn">
-                                    <p className="text-warning mb-2 fw-bold">Scan QR to Pay (Demo)</p>
-                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=demo@upi&pn=RideEase&am=${fareAmount}`} alt="QR Code" className="mb-4 bg-white p-2 rounded" />
-                                    <button onClick={() => saveRideToDBAndFinish('Online (QR Demo)')} className="btn btn-success w-100 py-3 fw-bold fs-5">I have Paid ✅</button>
+                                    <p className="text-warning mb-2 fw-bold">Scan QR to Pay</p>
+                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=merchant@upi&pn=RideEase&am=${fareAmount}`} alt="QR Code" className="mb-4 bg-white p-2 rounded" />
+                                    <button onClick={() => saveRideToDBAndFinish('QR Code')} className="btn btn-success w-100 py-3 fw-bold fs-5">I have Paid ✅</button>
                                 </div>
                             )}
                          </div>
@@ -275,9 +339,9 @@ export default function App() {
                      )) : <p className="text-white-50">No rides completed yet!</p>}
                  </div>
              )}
-             {activeTab === 'wallet' && <div className="glass-card p-4"><h4>Wallet</h4><h2>₹0.00</h2><button className="btn btn-warning mt-3">Add Money</button></div>}
+             {activeTab === 'wallet' && <div className="glass-card p-4"><h4>Wallet</h4><h2>₹0.00</h2></div>}
              {activeTab === 'refer' && <div className="glass-card p-4 text-center"><h4>Refer Code: RIDE-{userData?.phone?.slice(0,4)}</h4><p>Share to get ₹50 off!</p></div>}
-             {activeTab === 'profile' && <div className="glass-card p-4"><h4>Profile</h4><p>Name: {userData?.name || 'Not Provided'}</p><p>Phone: {userData?.phone}</p></div>}
+             {activeTab === 'profile' && <div className="glass-card p-4"><h4>Profile</h4><p>Name: {userData?.name}</p><p>Phone: {userData?.phone}</p></div>}
           </div>
       </div>
     );
@@ -290,7 +354,7 @@ export default function App() {
     const [incomingRide, setIncomingRide] = useState(null);
     const [activeRide, setActiveRide] = useState(null);
     const [otpInput, setOtpInput] = useState('');
-    const [rideHistory, setRideHistory] = useState([]); // Captain ki history
+    const [rideHistory, setRideHistory] = useState([]);
 
     useEffect(() => {
       socket.on('incoming_ride', (data) => { if(!activeRide) setIncomingRide(data); });
@@ -305,7 +369,6 @@ export default function App() {
       return () => { socket.off('incoming_ride'); socket.off('ride_started'); socket.off('otp_failed'); socket.off('trip_fully_complete'); }
     }, [activeRide]);
 
-    // FETCH CAPTAIN HISTORY & EARNINGS
     useEffect(() => {
       if(activeTab === 'history' || activeTab === 'earnings') {
           axios.get(`${SERVER_URL}/api/rides/${userData.name}`).then(res => setRideHistory(res.data)).catch(err => console.error(err));
@@ -323,12 +386,10 @@ export default function App() {
         else alert("Please enter a 4-digit OTP");
     };
 
-    const markRideComplete = () => { socket.emit('finish_ride', activeRide); };
-
     return (
       <div className="container-fluid min-vh-100 p-0 row m-0 text-white bg-dark">
           <div className="col-md-3 border-end border-secondary p-4 d-flex flex-column h-100 min-vh-100">
-              <div className="text-center mb-4"><h4 className="text-warning fw-bold">Captain Hub</h4><p className="text-white-50">Hello, <span className="text-white fw-bold">{userData?.name || userData?.phone || 'Boss'}</span></p><span className="badge bg-success">Online</span></div>
+              <div className="text-center mb-4"><h4 className="text-warning fw-bold">Captain Hub</h4><p className="text-white-50">Hello, <span className="text-white fw-bold">{userData?.name || userData?.phone}</span></p><span className="badge bg-success">Online</span></div>
               <button onClick={() => setActiveTab('radar')} className={`btn text-start mb-2 ${activeTab==='radar'?'btn-warning':'btn-outline-secondary text-white'}`}>📡 Live Radar</button>
               <button onClick={() => setActiveTab('earnings')} className={`btn text-start mb-2 ${activeTab==='earnings'?'btn-warning':'btn-outline-secondary text-white'}`}>💰 Earnings</button>
               <button onClick={() => setActiveTab('history')} className={`btn text-start mb-2 ${activeTab==='history'?'btn-warning':'btn-outline-secondary text-white'}`}>📜 Trip History</button>
@@ -355,9 +416,7 @@ export default function App() {
                                      <button onClick={verifyOTP} className="btn btn-warning w-100 py-3 fw-bold fs-5">Verify & Start Ride</button>
                                  </div>
                              ) : (
-                                 <div className="mt-4">
-                                     <button onClick={markRideComplete} className="btn btn-danger w-100 py-3 fs-5 fw-bold">End Ride & Request Payment</button>
-                                 </div>
+                                 <button onClick={() => socket.emit('finish_ride', activeRide)} className="btn btn-danger w-100 py-3 fs-5 fw-bold mt-4">End Ride & Request Payment</button>
                              )}
                          </div>
                      ) : incomingRide ? (
@@ -378,13 +437,7 @@ export default function App() {
                      )}
                  </div>
              )}
-             {activeTab === 'earnings' && (
-                 <div className="glass-card p-4 text-center">
-                     <h4 className="text-warning mb-3">Total Earnings</h4>
-                     <h1 className="text-success display-4 fw-bold">₹{rideHistory.reduce((sum, r) => sum + r[5], 0)}</h1>
-                     <p className="text-white-50">{rideHistory.length} Trips Completed</p>
-                 </div>
-             )}
+             {activeTab === 'earnings' && <div className="glass-card p-4 text-center"><h4 className="text-warning mb-3">Total Earnings</h4><h1 className="text-success display-4 fw-bold">₹{rideHistory.reduce((sum, r) => sum + r[5], 0)}</h1></div>}
              {activeTab === 'history' && (
                  <div className="glass-card p-4">
                      <h4 className="mb-4 text-warning">My Completed Trips</h4>
@@ -397,7 +450,7 @@ export default function App() {
                  </div>
              )}
              {activeTab === 'vehicle' && <div className="glass-card p-4"><h4>Docs</h4><p>RC Book: Verified ✅</p></div>}
-             {activeTab === 'profile' && <div className="glass-card p-4"><h4>Profile</h4><p>Name: {userData?.name || 'Captain'}</p></div>}
+             {activeTab === 'profile' && <div className="glass-card p-4"><h4>Profile</h4><p>Name: {userData?.name}</p></div>}
           </div>
       </div>
     );
@@ -421,13 +474,8 @@ export default function App() {
         return () => socket.off('admin_update');
     }, []);
 
-    const fetchDbStats = () => {
-        axios.get(`${SERVER_URL}/api/admin/stats`).then(res => setDbStats(res.data)).catch(err => console.error(err));
-    };
-
-    useEffect(() => {
-        if(activeTab === 'dash') fetchDbStats();
-    }, [activeTab]);
+    const fetchDbStats = () => axios.get(`${SERVER_URL}/api/admin/stats`).then(res => setDbStats(res.data)).catch(err => console.error(err));
+    useEffect(() => { if(activeTab === 'dash') fetchDbStats(); }, [activeTab]);
 
     return (
       <div className="container-fluid min-vh-100 p-0 row m-0 bg-dark text-white">
@@ -452,10 +500,17 @@ export default function App() {
                   </div>
                   </>
               )}
-              {activeTab === 'liverides' && <div className="glass-card p-4"><h4>Live Map Tracking</h4><p>Tracking {stats.active} vehicles on map...</p></div>}
+              {activeTab === 'liverides' && (
+                  <div className="glass-card p-4 h-100">
+                      <h4>Live Map Tracking ({stats.active} Active Rides)</h4>
+                      <div className="mt-4 rounded overflow-hidden" style={{height: '400px'}}>
+                          <iframe width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src="https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.9%2C73.1%2C19.3&amp;layer=mapnik" style={{border: '1px solid #444', filter: 'invert(90%) hue-rotate(180deg)'}}></iframe>
+                      </div>
+                  </div>
+              )}
               {activeTab === 'users' && <div className="glass-card p-4"><h4>User Database</h4><p>Check "Live Dashboard" for counts.</p></div>}
               {activeTab === 'captains' && <div className="glass-card p-4"><h4>Pending Verifications</h4><p className="text-danger">0 Captains Pending</p></div>}
-              {activeTab === 'settings' && <div className="glass-card p-4"><h4>Server Config</h4><p>Base Fare: ₹150</p><p>Surge Multiplier: 1.0x</p></div>}
+              {activeTab === 'settings' && <div className="glass-card p-4"><h4>Server Config</h4><p>Base Fare: ₹150</p></div>}
           </div>
       </div>
     );
