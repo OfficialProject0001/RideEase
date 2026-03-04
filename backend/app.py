@@ -27,25 +27,10 @@ rzp_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 def init_db():
     conn = sqlite3.connect('rideease.db')
     c = conn.cursor()
-
-    # USERS TABLE
-    c.execute('''CREATE TABLE IF NOT EXISTS users 
-                 (phone TEXT PRIMARY KEY, name TEXT, city TEXT, role TEXT)''')
-
-    # RIDES TABLE
+    c.execute('''CREATE TABLE IF NOT EXISTS users (phone TEXT PRIMARY KEY, name TEXT, city TEXT, role TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS rides
-                 (id TEXT PRIMARY KEY,
-                  rider TEXT,
-                  captain TEXT,
-                  pickup TEXT,
-                  drop_location TEXT,
-                  amount INTEGER,
-                  status TEXT,
-                  created_at TEXT)''')
-
-    # Admin Default
+                 (id TEXT PRIMARY KEY, rider TEXT, captain TEXT, pickup TEXT, drop_location TEXT, amount INTEGER, status TEXT, created_at TEXT)''')
     c.execute("INSERT OR IGNORE INTO users (phone, name, city, role) VALUES ('Rohit01', 'Admin', 'HQ', 'admin')")
-
     conn.commit()
     conn.close()
 
@@ -56,7 +41,7 @@ def home():
     return "RideEase Backend Running with OTP System & Database ✅"
 
 # ==============================
-# 1️⃣ LOGIN API
+# LOGIN & REGISTER
 # ==============================
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -73,46 +58,32 @@ def login():
     user = c.fetchone()
     conn.close()
     
-    if user:
-        return jsonify({"isNew": False, "user": {"phone": user[0], "name": user[1], "city": user[2], "role": user[3]}})
+    if user: return jsonify({"isNew": False, "user": {"phone": user[0], "name": user[1], "city": user[2], "role": user[3]}})
     return jsonify({"isNew": True, "message": "New user"})
 
-# ==============================
-# 2️⃣ REGISTER API
-# ==============================
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
     conn = sqlite3.connect('rideease.db')
     c = conn.cursor()
-
     c.execute("SELECT * FROM users WHERE phone=?", (data['phone'],))
     if c.fetchone():
         conn.close()
         return jsonify({"success": False, "message": "Exists!"}), 400
 
-    c.execute("INSERT INTO users (phone, name, city, role) VALUES (?, ?, ?, ?)", 
-              (data['phone'], data['name'], data['city'], data['role']))
+    c.execute("INSERT INTO users (phone, name, city, role) VALUES (?, ?, ?, ?)", (data['phone'], data['name'], data['city'], data['role']))
     conn.commit()
     conn.close()
-
     return jsonify({"success": True})
 
 # ==============================
-# 3️⃣ RAZORPAY API
+# RAZORPAY API
 # ==============================
 @app.route('/api/create-order', methods=['POST'])
 def create_order():
     data = request.json
     amount = int(data.get('amount', 100)) * 100
-
-    order_data = {
-        "amount": amount,
-        "currency": "INR",
-        "receipt": str(uuid.uuid4()),
-        "payment_capture": 1
-    }
-
+    order_data = {"amount": amount, "currency": "INR", "receipt": str(uuid.uuid4()), "payment_capture": 1}
     try:
         order = rzp_client.order.create(data=order_data)
         return jsonify(order)
@@ -120,7 +91,7 @@ def create_order():
         return jsonify({"error": str(e)}), 500
 
 # ==============================
-# 4️⃣ SAVE RIDE AFTER PAYMENT
+# SAVE RIDE API
 # ==============================
 @app.route('/api/save-ride', methods=['POST'])
 def save_ride():
@@ -128,37 +99,27 @@ def save_ride():
     ride_id = str(uuid.uuid4())
     conn = sqlite3.connect('rideease.db')
     c = conn.cursor()
-
-    c.execute('''INSERT INTO rides 
-                 (id, rider, captain, pickup, drop_location, amount, status, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-              (ride_id,
-               data.get("rider"),
-               data.get("captain", ""),
-               data.get("pickup"),
-               data.get("drop"),
-               data.get("amount"),
-               data.get("status", "requested"),
-               datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-
+    c.execute('''INSERT INTO rides (id, rider, captain, pickup, drop_location, amount, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+              (ride_id, data.get("rider"), data.get("captain", ""), data.get("pickup"), data.get("drop"), data.get("amount"), data.get("status", "requested"), datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
     conn.commit()
     conn.close()
     return jsonify({"success": True, "ride_id": ride_id})
 
 # ==============================
-# 5️⃣ RIDE HISTORY API
+# GET RIDES HISTORY (FIXED FOR CAPTAIN)
 # ==============================
-@app.route('/api/rides/<phone>', methods=['GET'])
-def get_rides(phone):
+@app.route('/api/rides/<identifier>', methods=['GET'])
+def get_rides(identifier):
     conn = sqlite3.connect('rideease.db')
     c = conn.cursor()
-    c.execute("SELECT * FROM rides WHERE rider=?", (phone,))
+    # Ab ye Rider ka Phone OR Captain ka Naam dono me se kuch bhi match karega
+    c.execute("SELECT * FROM rides WHERE rider=? OR captain=?", (identifier, identifier))
     rides = c.fetchall()
     conn.close()
     return jsonify(rides)
 
 # ==============================
-# 6️⃣ ADMIN STATS API
+# ADMIN STATS
 # ==============================
 @app.route('/api/admin/stats', methods=['GET'])
 def admin_stats():
@@ -169,28 +130,21 @@ def admin_stats():
     c.execute("SELECT COUNT(*) FROM users")
     total_users = c.fetchone()[0]
     conn.close()
-
-    return jsonify({
-        "total_rides": total_rides,
-        "total_users": total_users
-    })
+    return jsonify({"total_rides": total_rides, "total_users": total_users})
 
 # ==============================
-# 7️⃣ SOCKET REAL-TIME (WITH OTP)
+# SOCKET REAL-TIME (WITH OTP)
 # ==============================
 active_rides = {}
 
 @socketio.on('request_ride')
 def handle_ride_request(ride_data):
     ride_id = str(uuid.uuid4())
-    otp = str(random.randint(1000, 9999)) # 4-digit OTP Generate hua
-    
+    otp = str(random.randint(1000, 9999))
     ride_data['id'] = ride_id
     ride_data['otp'] = otp
     ride_data['status'] = 'searching'
-    
     active_rides[ride_id] = ride_data
-
     emit('incoming_ride', ride_data, broadcast=True)
     emit('admin_update', {"type": "new_ride", "count": len(active_rides)}, broadcast=True)
 
@@ -227,8 +181,5 @@ def handle_payment(data):
         emit('trip_fully_complete', data, broadcast=True)
         emit('admin_update', {"type": "complete_ride"}, broadcast=True)
 
-# ==============================
-# RUN SERVER
-# ==============================
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), allow_unsafe_werkzeug=True)
