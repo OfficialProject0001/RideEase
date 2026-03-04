@@ -78,6 +78,7 @@ export default function App() {
       try {
         const payload = role === 'admin' ? { phone, password } : { phone };
         const res = await axios.post(`${SERVER_URL}/api/login`, payload);
+
         if (res.data.isNew && role !== 'admin') { setAuthStep('register'); } 
         else if (!res.data.isNew) { finalizeLogin(res.data.user); } 
         else { alert("Invalid Credentials"); }
@@ -108,12 +109,14 @@ export default function App() {
             <form onSubmit={handleSubmit}>
               <div className="mb-3 text-start">
                 <label className="form-label text-dark fw-bold">{role === 'admin' ? "Admin ID" : "Phone Number"}</label>
-                <input type="text" className="form-control bg-light p-3 border-0" placeholder={role === 'admin' ? "Enter Admin ID" : "Enter 10-digit mobile number"} value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                {/* FIX: Added text-dark and border to input */}
+                <input type="text" className="form-control bg-light text-dark p-3 border" placeholder={role === 'admin' ? "Enter Admin ID" : "Enter 10-digit mobile number"} value={phone} onChange={(e) => setPhone(e.target.value)} required />
               </div>
               {role === 'admin' && (
                 <div className="mb-3 text-start">
                   <label className="form-label text-dark fw-bold">Password</label>
-                  <input type="password" className="form-control bg-light p-3 border-0" placeholder="Enter secure password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  {/* FIX: Added text-dark and border to input */}
+                  <input type="password" className="form-control bg-light text-dark p-3 border" placeholder="Enter secure password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
               )}
               <button type="submit" className="btn btn-warning w-100 py-3 mt-3 fw-bold fs-5 text-dark">Continue</button>
@@ -123,11 +126,13 @@ export default function App() {
               <h6 className="text-dark fw-bold mb-4">Welcome! Please provide your details.</h6>
               <div className="mb-3 text-start">
                 <label className="form-label text-dark fw-bold">Full Name</label>
-                <input type="text" className="form-control bg-light p-3 border-0" placeholder="Enter your full name" onChange={(e) => setName(e.target.value)} required />
+                {/* FIX: Added text-dark and border to input */}
+                <input type="text" className="form-control bg-light text-dark p-3 border" placeholder="Enter your full name" onChange={(e) => setName(e.target.value)} required />
               </div>
               <div className="mb-4 text-start">
                 <label className="form-label text-dark fw-bold">City</label>
-                <input type="text" className="form-control bg-light p-3 border-0" placeholder="Enter your city" onChange={(e) => setCity(e.target.value)} required />
+                {/* FIX: Added text-dark and border to input */}
+                <input type="text" className="form-control bg-light text-dark p-3 border" placeholder="Enter your city" onChange={(e) => setCity(e.target.value)} required />
               </div>
               <button type="submit" className="btn btn-dark w-100 py-3 fw-bold fs-5">Create Account</button>
             </form>
@@ -138,7 +143,7 @@ export default function App() {
   };
 
   // ==========================================
-  // CUSTOMER PANEL (EXACT SCREENSHOT UI)
+  // CUSTOMER PANEL
   // ==========================================
   const CustomerPanel = () => {
     const [rideState, setRideState] = useState('idle'); 
@@ -148,14 +153,13 @@ export default function App() {
     const [pickupLoc, setPickupLoc] = useState(`${userData?.city || 'Mumbai'} Station`);
     const [dropLoc, setDropLoc] = useState('City Center Mall');
     
-    // Exact Vehicles from your Screenshot
     const vehicles = [
         { id: 'cab_xl', name: 'Cab XL', icon: '🚙', price: 210, min: 189, max: 231 },
         { id: 'auto', name: 'Auto', icon: '🛺', price: 65, min: 59, max: 72 },
         { id: 'cab_eco', name: 'Cab Economy', icon: '🚕', price: 120, min: 108, max: 132 },
         { id: 'cab_prem', name: 'Cab Premium', icon: '🚘', price: 180, min: 162, max: 198 },
     ];
-    const [selectedVehicle, setSelectedVehicle] = useState(vehicles[1]); // Default Auto
+    const [selectedVehicle, setSelectedVehicle] = useState(vehicles[1]); 
     
     const [paymentMethod, setPaymentMethod] = useState(''); 
     const [paymentStep, setPaymentStep] = useState('options'); 
@@ -243,25 +247,24 @@ export default function App() {
           <div className="col-md-9 p-4 p-md-5">
              {activeTab === 'home' && (
                  <div className="bg-white p-4 rounded-4 shadow-sm mx-auto border" style={{maxWidth:'600px'}}>
-                     {/* Map Top Section */}
                      <div className="mb-4 rounded-4 overflow-hidden shadow-sm border" style={{height: '180px'}}>
                          <iframe width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src="https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.9%2C73.1%2C19.3&amp;layer=mapnik" style={{border: 'none'}}></iframe>
                      </div>
 
                      {rideState === 'idle' && (
                         <>
-                            {/* Exact Location Input Style */}
                             <div className="position-relative mb-4 p-3 border rounded-4 bg-white shadow-sm">
                                 <div className="d-flex align-items-center mb-2">
                                     <span className="text-success me-3 fs-5">●</span>
-                                    <input type="text" className="form-control border-0 p-0 shadow-none fw-semibold text-muted" value={pickupLoc} onChange={(e) => setPickupLoc(e.target.value)} style={{fontSize: '15px'}} />
+                                    {/* FIX: Explicit text-dark on location inputs */}
+                                    <input type="text" className="form-control border-0 p-0 shadow-none fw-semibold text-dark" value={pickupLoc} onChange={(e) => setPickupLoc(e.target.value)} style={{fontSize: '15px'}} />
                                 </div>
-                                {/* Dotted Line */}
                                 <div className="position-absolute" style={{left: '21px', top: '35px', bottom: '35px', borderLeft: '2px dotted #ccc'}}></div>
                                 <hr className="my-2 ms-4 text-muted opacity-25" />
                                 <div className="d-flex align-items-center mt-2">
                                     <span className="text-danger me-3 fs-5">○</span>
-                                    <input type="text" className="form-control border-0 p-0 shadow-none fw-bold" value={dropLoc} onChange={(e) => setDropLoc(e.target.value)} style={{fontSize: '15px'}} />
+                                    {/* FIX: Explicit text-dark on location inputs */}
+                                    <input type="text" className="form-control border-0 p-0 shadow-none fw-bold text-dark" value={dropLoc} onChange={(e) => setDropLoc(e.target.value)} style={{fontSize: '15px'}} />
                                 </div>
                             </div>
                             
@@ -280,7 +283,6 @@ export default function App() {
                                 ))}
                             </div>
 
-                            {/* Exact Bottom Button Section */}
                             <div className="d-flex align-items-center mb-2 ms-2">
                                 <span className="text-primary me-2">💵</span>
                                 <small className="fw-semibold text-muted">Cash</small>
@@ -294,10 +296,10 @@ export default function App() {
                              <h4 className="fw-bold mb-4">Confirm Payment Method</h4>
                              <div className="d-flex flex-column gap-3 mb-4">
                                  <button onClick={() => confirmAndRequestRide('Cash')} className="btn btn-light border p-4 rounded-4 text-start d-flex align-items-center gap-3">
-                                     <span className="fs-2">💵</span> <div><h5 className="mb-0 fw-bold">Cash</h5><small className="text-muted">Pay directly to captain</small></div>
+                                     <span className="fs-2">💵</span> <div><h5 className="mb-0 fw-bold text-dark">Cash</h5><small className="text-muted">Pay directly to captain</small></div>
                                  </button>
                                  <button onClick={() => confirmAndRequestRide('Online')} className="btn btn-light border p-4 rounded-4 text-start d-flex align-items-center gap-3">
-                                     <span className="fs-2">💳</span> <div><h5 className="mb-0 fw-bold">Online Payment</h5><small className="text-muted">UPI, Cards, NetBanking</small></div>
+                                     <span className="fs-2">💳</span> <div><h5 className="mb-0 fw-bold text-dark">Online Payment</h5><small className="text-muted">UPI, Cards, NetBanking</small></div>
                                  </button>
                              </div>
                              <button onClick={()=>setRideState('idle')} className="btn btn-link text-dark text-decoration-none fw-bold">← Back to Vehicles</button>
@@ -348,8 +350,9 @@ export default function App() {
                                     )}
                                     {paymentStep === 'upi_entry' && (
                                         <div className="bg-light p-4 rounded-4 border">
-                                            <h5 className="fw-bold mb-3">Enter your UPI ID</h5>
-                                            <input type="text" className="form-control bg-white p-3 mb-4 text-center fs-5" placeholder="e.g. boss@ybl" value={upiIdInput} onChange={(e) => setUpiIdInput(e.target.value)} />
+                                            <h5 className="fw-bold mb-3 text-dark">Enter your UPI ID</h5>
+                                            {/* FIX: Ensure UPI input text is dark */}
+                                            <input type="text" className="form-control bg-white text-dark border p-3 mb-4 text-center fs-5" placeholder="e.g. boss@ybl" value={upiIdInput} onChange={(e) => setUpiIdInput(e.target.value)} />
                                             <div className="d-flex gap-2">
                                                 <button onClick={handleUPIRequest} className="btn btn-dark flex-grow-1 py-3 fw-bold rounded-3">Request</button>
                                                 <button onClick={() => setPaymentStep('options')} className="btn btn-outline-danger py-3 px-4 fw-bold rounded-3">Cancel</button>
@@ -365,7 +368,7 @@ export default function App() {
                                     )}
                                     {paymentStep === 'qr_view' && (
                                         <div className="bg-light p-4 rounded-4 border">
-                                            <p className="fw-bold mb-3">Scan QR to Pay</p>
+                                            <p className="fw-bold mb-3 text-dark">Scan QR to Pay</p>
                                             <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=merchant@upi&pn=RideEase&am=${currentRide.fare}`} alt="QR Code" className="mb-4 bg-white p-2 rounded" />
                                             <button onClick={() => saveRideToDBAndFinish('QR Code')} className="btn btn-success w-100 py-3 fw-bold fs-5 rounded-3">I have Paid ✅</button>
                                         </div>
@@ -377,21 +380,20 @@ export default function App() {
                  </div>
              )}
              
-             {/* OTHER TABS */}
              {activeTab === 'history' && (
                  <div className="bg-white p-4 rounded-4 shadow-sm border">
                      <h4 className="fw-bold mb-4">Real Past Rides</h4>
                      {rideHistory.length > 0 ? rideHistory.map((r, i) => (
                          <div key={i} className="bg-light p-3 rounded-4 mb-3 border d-flex justify-content-between align-items-center">
-                            <div><p className="mb-0 fw-bold">{r[3]} ➔ {r[4]}</p><small className="text-muted">{r[7]} • {r[2]}</small></div>
+                            <div><p className="mb-0 fw-bold text-dark">{r[3]} ➔ {r[4]}</p><small className="text-muted">{r[7]} • {r[2]}</small></div>
                             <h5 className="text-dark fw-bold mb-0">₹{r[5]} <span className="fs-6 text-muted d-block text-end">({r[6]})</span></h5>
                          </div>
                      )) : <p className="text-muted">No rides completed yet!</p>}
                  </div>
              )}
-             {activeTab === 'wallet' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4>Wallet</h4><h2>₹0.00</h2></div>}
-             {activeTab === 'refer' && <div className="bg-white p-4 rounded-4 shadow-sm border text-center"><h4>Refer Code: RIDE-{userData?.phone?.slice(0,4)}</h4></div>}
-             {activeTab === 'profile' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4>Profile</h4><p className="fw-bold">{userData?.name}</p><p>{userData?.phone}</p></div>}
+             {activeTab === 'wallet' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4 className="text-dark">Wallet</h4><h2 className="text-dark">₹0.00</h2></div>}
+             {activeTab === 'refer' && <div className="bg-white p-4 rounded-4 shadow-sm border text-center"><h4 className="text-dark">Refer Code: RIDE-{userData?.phone?.slice(0,4)}</h4></div>}
+             {activeTab === 'profile' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4 className="text-dark">Profile</h4><p className="fw-bold text-dark">{userData?.name}</p><p className="text-dark">{userData?.phone}</p></div>}
           </div>
       </div>
     );
@@ -451,7 +453,6 @@ export default function App() {
           <div className="col-md-9 p-4 p-md-5">
              {activeTab === 'radar' && (
                  <div className="mx-auto" style={{maxWidth:'600px'}}>
-                     {/* LIVE MAP FOR CAPTAIN */}
                      <div className="mb-4 rounded-4 overflow-hidden shadow-sm border" style={{height: '200px'}}>
                          <iframe width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src="https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.9%2C73.1%2C19.3&amp;layer=mapnik" style={{border: 'none'}}></iframe>
                      </div>
@@ -460,15 +461,16 @@ export default function App() {
                          <div className="bg-white p-5 rounded-4 shadow-sm border text-center animate__animated animate__fadeIn">
                              <h3 className="text-success fw-bold mb-4">Status: {activeRide.status === 'in_progress' ? 'ON RIDE 🚀' : 'ARRIVED 📍'}</h3>
                              <div className="bg-light p-4 rounded-4 border mb-4 text-start">
-                                 <p className="mb-2"><strong>Vehicle Req:</strong> {activeRide.vehicle}</p>
-                                 <p className="mb-2"><strong>Rider:</strong> {activeRide.riderName} ({activeRide.riderPhone})</p>
-                                 <p className="mb-2"><strong>From:</strong> {activeRide.pickup}</p>
-                                 <p className="mb-0"><strong>To:</strong> {activeRide.drop}</p>
+                                 <p className="mb-2 text-dark"><strong>Vehicle Req:</strong> {activeRide.vehicle}</p>
+                                 <p className="mb-2 text-dark"><strong>Rider:</strong> {activeRide.riderName} ({activeRide.riderPhone})</p>
+                                 <p className="mb-2 text-dark"><strong>From:</strong> {activeRide.pickup}</p>
+                                 <p className="mb-0 text-dark"><strong>To:</strong> {activeRide.drop}</p>
                              </div>
                              {activeRide.status === 'accepted' ? (
                                  <div className="mt-4 p-4 border rounded-4 bg-light">
-                                     <h5 className="fw-bold mb-3">Enter OTP to Start</h5>
-                                     <input type="number" className="form-control bg-white p-3 mb-3 text-center fs-4 tracking-widest" placeholder="----" value={otpInput} onChange={(e)=>setOtpInput(e.target.value)} />
+                                     <h5 className="fw-bold mb-3 text-dark">Enter OTP to Start</h5>
+                                     {/* FIX: Explicit text-dark on OTP input */}
+                                     <input type="number" className="form-control bg-white text-dark border p-3 mb-3 text-center fs-4 tracking-widest" placeholder="----" value={otpInput} onChange={(e)=>setOtpInput(e.target.value)} />
                                      <button onClick={verifyOTP} className="btn btn-dark w-100 py-3 fw-bold fs-5 rounded-4">Verify & Start Ride</button>
                                  </div>
                              ) : (
@@ -478,9 +480,9 @@ export default function App() {
                      ) : incomingRide ? (
                          <div className="bg-white p-5 rounded-4 shadow-lg border border-warning animate__animated animate__pulse">
                              <h3 className="text-warning fw-bold mb-3">🔥 New Request!</h3>
-                             <p className="fs-5 mb-1">Rider: <strong>{incomingRide.riderName}</strong></p>
-                             <p className="fs-5 mb-1">Type: <strong>{incomingRide.vehicle}</strong></p>
-                             <p className="fs-5 mb-1">Pickup: <strong>{incomingRide.pickup}</strong></p>
+                             <p className="fs-5 mb-1 text-dark">Rider: <strong>{incomingRide.riderName}</strong></p>
+                             <p className="fs-5 mb-1 text-dark">Type: <strong>{incomingRide.vehicle}</strong></p>
+                             <p className="fs-5 mb-1 text-dark">Pickup: <strong>{incomingRide.pickup}</strong></p>
                              <p className="text-muted">Payment: <strong>{incomingRide.paymentPref}</strong></p>
                              <h1 className="text-dark fw-bold my-4">₹{incomingRide.fare}</h1>
                              <div className="d-flex gap-3">
@@ -490,25 +492,25 @@ export default function App() {
                          </div>
                      ) : (
                          <div className="text-center mt-5">
-                             <div className="spinner-grow text-dark mb-4" style={{width:'4rem', height:'4rem'}}></div><h3 className="fw-bold">Radar Active</h3><p className="text-muted">Scanning for nearby riders...</p>
+                             <div className="spinner-grow text-dark mb-4" style={{width:'4rem', height:'4rem'}}></div><h3 className="fw-bold text-dark">Radar Active</h3><p className="text-muted">Scanning for nearby riders...</p>
                          </div>
                      )}
                  </div>
              )}
-             {activeTab === 'earnings' && <div className="bg-white p-4 rounded-4 shadow-sm border text-center"><h4 className="fw-bold mb-3">Total Earnings</h4><h1 className="text-success display-4 fw-bold">₹{rideHistory.reduce((sum, r) => sum + r[5], 0)}</h1></div>}
+             {activeTab === 'earnings' && <div className="bg-white p-4 rounded-4 shadow-sm border text-center"><h4 className="fw-bold mb-3 text-dark">Total Earnings</h4><h1 className="text-success display-4 fw-bold">₹{rideHistory.reduce((sum, r) => sum + r[5], 0)}</h1></div>}
              {activeTab === 'history' && (
                  <div className="bg-white p-4 rounded-4 shadow-sm border">
-                     <h4 className="fw-bold mb-4">My Completed Trips</h4>
+                     <h4 className="fw-bold mb-4 text-dark">My Completed Trips</h4>
                      {rideHistory.length > 0 ? rideHistory.map((r, i) => (
                          <div key={i} className="bg-light p-3 rounded-4 mb-3 border d-flex justify-content-between align-items-center">
-                            <div><p className="mb-0 fw-bold">{r[3]} ➔ {r[4]}</p><small className="text-muted">{r[7]} • {r[1]}</small></div>
+                            <div><p className="mb-0 fw-bold text-dark">{r[3]} ➔ {r[4]}</p><small className="text-muted">{r[7]} • {r[1]}</small></div>
                             <h5 className="text-dark fw-bold mb-0">+₹{r[5]} <span className="fs-6 text-muted d-block text-end">({r[6]})</span></h5>
                          </div>
                      )) : <p className="text-muted">No trips completed yet!</p>}
                  </div>
              )}
-             {activeTab === 'vehicle' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4>Docs</h4><p>RC Book: Verified ✅</p></div>}
-             {activeTab === 'profile' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4>Profile</h4><p className="fw-bold">{userData?.name}</p></div>}
+             {activeTab === 'vehicle' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4 className="text-dark">Docs</h4><p className="text-dark">RC Book: Verified ✅</p></div>}
+             {activeTab === 'profile' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4 className="text-dark">Profile</h4><p className="fw-bold text-dark">{userData?.name}</p></div>}
           </div>
       </div>
     );
@@ -550,7 +552,7 @@ export default function App() {
           <div className="col-md-9 p-4 p-md-5">
               {activeTab === 'dash' && (
                   <>
-                  <h2 className="fw-bold mb-4">System Analytics</h2>
+                  <h2 className="fw-bold mb-4 text-dark">System Analytics</h2>
                   <div className="row g-4 mb-4">
                      <div className="col-4"><div className="bg-white p-4 rounded-4 shadow-sm border border-warning"><h6 className="text-muted">Total Users</h6><h1 className="text-dark fw-bold">{dbStats.total_users}</h1></div></div>
                      <div className="col-4"><div className="bg-white p-4 rounded-4 shadow-sm border border-success"><h6 className="text-muted">Total Rides</h6><h1 className="text-dark fw-bold">{dbStats.total_rides}</h1></div></div>
@@ -560,15 +562,15 @@ export default function App() {
               )}
               {activeTab === 'liverides' && (
                   <div className="bg-white p-4 rounded-4 shadow-sm border h-100">
-                      <h4 className="fw-bold">Live Map Tracking ({stats.active} Active Rides)</h4>
+                      <h4 className="fw-bold text-dark">Live Map Tracking ({stats.active} Active Rides)</h4>
                       <div className="mt-4 rounded-4 overflow-hidden border" style={{height: '400px'}}>
                           <iframe width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src="https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.9%2C73.1%2C19.3&amp;layer=mapnik" style={{border: 'none'}}></iframe>
                       </div>
                   </div>
               )}
-              {activeTab === 'users' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4>User Database</h4><p>Check "Live Dashboard" for counts.</p></div>}
-              {activeTab === 'captains' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4>Pending Verifications</h4><p className="text-danger">0 Captains Pending</p></div>}
-              {activeTab === 'settings' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4>Server Config</h4><p>Theme: White & Black</p></div>}
+              {activeTab === 'users' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4 className="text-dark">User Database</h4><p className="text-dark">Check "Live Dashboard" for counts.</p></div>}
+              {activeTab === 'captains' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4 className="text-dark">Pending Verifications</h4><p className="text-danger">0 Captains Pending</p></div>}
+              {activeTab === 'settings' && <div className="bg-white p-4 rounded-4 shadow-sm border"><h4 className="text-dark">Server Config</h4><p className="text-dark">Theme: White & Black</p></div>}
           </div>
       </div>
     );
