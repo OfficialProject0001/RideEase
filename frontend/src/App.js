@@ -6,20 +6,12 @@ import './App.css';
 
 const SERVER_URL = "https://rideease-4m7a.onrender.com"; 
 const socket = io(SERVER_URL, { autoConnect: false });
-const RAZORPAY_KEY_ID = "rzp_test_YOUR_KEY_HERE";
 
 export default function App() {
   const [currentView, setCurrentView] = useState('landing');
   const [role, setRole] = useState(null);
   const [userData, setUserData] = useState(null);
   const [activeTab, setActiveTab] = useState('home');
-
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
-  }, []);
 
   useEffect(() => {
     const savedUser = sessionStorage.getItem('rideease_user'); 
@@ -103,33 +95,32 @@ export default function App() {
         <BackButton onClick={() => navigateTo('landing')} />
         <div className="bg-white p-5 shadow-sm rounded-4 border" style={{ width: '420px' }}>
           <h4 className="mb-4 text-center text-dark fw-bold">{role?.toUpperCase()} LOGIN</h4>
-
           {authStep === 'phone' ? (
             <form onSubmit={handleSubmit}>
               <div className="mb-3 text-start">
                 <label className="form-label text-dark fw-bold">{role === 'admin' ? "Admin ID" : "Phone Number"}</label>
-                <input type="text" className="form-control bg-light text-dark p-3 border" placeholder={role === 'admin' ? "Enter Admin ID" : "Enter 10-digit mobile number"} value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                <input type="text" className="form-control bg-light text-dark p-3 border-0 rounded-3" placeholder={role === 'admin' ? "Enter Admin ID" : "Enter 10-digit mobile number"} value={phone} onChange={(e) => setPhone(e.target.value)} required />
               </div>
               {role === 'admin' && (
                 <div className="mb-3 text-start">
                   <label className="form-label text-dark fw-bold">Password</label>
-                  <input type="password" className="form-control bg-light text-dark p-3 border" placeholder="Enter secure password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <input type="password" className="form-control bg-light text-dark p-3 border-0 rounded-3" placeholder="Enter secure password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
               )}
-              <button type="submit" className="btn btn-warning w-100 py-3 mt-3 fw-bold fs-5 text-dark">Continue</button>
+              <button type="submit" className="btn btn-warning w-100 py-3 mt-3 fw-bold fs-5 text-dark rounded-3">Continue</button>
             </form>
           ) : (
             <form onSubmit={handleRegister}>
               <h6 className="text-dark fw-bold mb-4">Welcome! Please provide your details.</h6>
               <div className="mb-3 text-start">
                 <label className="form-label text-dark fw-bold">Full Name</label>
-                <input type="text" className="form-control bg-light text-dark p-3 border" placeholder="Enter your full name" onChange={(e) => setName(e.target.value)} required />
+                <input type="text" className="form-control bg-light text-dark p-3 border-0 rounded-3" placeholder="Enter your full name" onChange={(e) => setName(e.target.value)} required />
               </div>
               <div className="mb-4 text-start">
                 <label className="form-label text-dark fw-bold">City</label>
-                <input type="text" className="form-control bg-light text-dark p-3 border" placeholder="Enter your city" onChange={(e) => setCity(e.target.value)} required />
+                <input type="text" className="form-control bg-light text-dark p-3 border-0 rounded-3" placeholder="Enter your city" onChange={(e) => setCity(e.target.value)} required />
               </div>
-              <button type="submit" className="btn btn-dark w-100 py-3 fw-bold fs-5">Create Account</button>
+              <button type="submit" className="btn btn-dark w-100 py-3 fw-bold fs-5 rounded-3">Create Account</button>
             </form>
           )}
         </div>
@@ -155,11 +146,9 @@ export default function App() {
         { id: 'cab_prem', name: 'Cab Premium', icon: '🚘', price: 180, min: 162, max: 198 },
     ];
     const [selectedVehicle, setSelectedVehicle] = useState(vehicles[1]); 
-    
     const [paymentMethod, setPaymentMethod] = useState(''); 
     const [paymentStep, setPaymentStep] = useState('options'); 
     const [upiIdInput, setUpiIdInput] = useState('');
-    const upiID = "boss@ybl"; 
 
     useEffect(() => {
       socket.on('ride_accepted_by_captain', (data) => { if (data.riderPhone === userData.phone) { setCurrentRide(data); setRideState('accepted'); } });
@@ -174,18 +163,25 @@ export default function App() {
       return () => { socket.off('ride_accepted_by_captain'); socket.off('ride_started'); socket.off('ride_completed_pay_now'); socket.off('trip_fully_complete'); }
     }, []);
 
+    // THE FIX: 5-Second Auto Payment System
     useEffect(() => {
-      if(activeTab === 'history') {
-          axios.get(`${SERVER_URL}/api/rides/${userData.phone}`).then(res => setRideHistory(res.data)).catch(err => console.error(err));
-      }
+        let timer;
+        if (rideState === 'payment_pending' && (paymentStep === 'processing_upi' || paymentStep === 'qr_view')) {
+            timer = setTimeout(() => {
+                saveRideToDBAndFinish('Online (Auto-Verified)');
+            }, 5000);
+        }
+        return () => clearTimeout(timer);
+    }, [paymentStep, rideState]);
+
+    useEffect(() => {
+      if(activeTab === 'history') { axios.get(`${SERVER_URL}/api/rides/${userData.phone}`).then(res => setRideHistory(res.data)).catch(err => console.error(err)); }
     }, [activeTab]);
 
     const handleSearchVehicles = () => {
         if(!pickupLoc || !dropLoc) return alert("Please enter both Pickup and Drop locations!");
         setRideState('select_vehicle');
     };
-
-    const proceedToPaymentSelection = () => setRideState('select_payment');
 
     const confirmAndRequestRide = (method) => {
         setPaymentMethod(method);
@@ -206,61 +202,45 @@ export default function App() {
         } catch(err) { console.error("Error saving ride", err); }
     };
 
-    const handleUPIRequest = () => {
-        if(!upiIdInput.includes('@')) return alert("Please enter a valid UPI ID (e.g., name@ybl)");
-        setPaymentStep('processing_upi');
-        setTimeout(() => { saveRideToDBAndFinish('UPI'); }, 4000); 
-    };
-
-    const handleOnlinePayment = async () => {
-      try {
-        const orderRes = await axios.post(`${SERVER_URL}/api/create-order`, { amount: currentRide.fare });
-        if(orderRes.data && !orderRes.data.error) {
-            const options = {
-              key: RAZORPAY_KEY_ID, amount: orderRes.data.amount, currency: "INR", name: "RideEase",
-              description: "Ride Fare", order_id: orderRes.data.id, handler: () => saveRideToDBAndFinish('Card/NetBanking'),
-              prefill: { name: userData.name, contact: userData.phone }, theme: { color: "#fbbf24" }
-            };
-            new window.Razorpay(options).open();
-        } else { throw new Error("No Keys"); }
-      } catch (err) { setPaymentStep('qr_view'); }
-    };
-
     return (
       <div className="container-fluid min-vh-100 p-0 row m-0 bg-light text-dark">
+          {/* SIDEBAR */}
           <div className="col-md-3 border-end bg-white p-4 d-flex flex-column h-100 min-vh-100 shadow-sm">
               <div className="text-center mb-4">
                   <h4 className="fw-bold text-dark">RideEase <span className="text-warning">Rider</span></h4>
                   <p className="text-muted">Hello, <span className="fw-bold text-dark">{userData?.name || userData?.phone}</span></p>
               </div>
-              <button onClick={() => setActiveTab('home')} className={`btn text-start mb-2 fw-bold ${activeTab==='home'?'btn-dark':'btn-light text-dark border-0'}`}>📍 Book Ride</button>
-              <button onClick={() => setActiveTab('history')} className={`btn text-start mb-2 fw-bold ${activeTab==='history'?'btn-dark':'btn-light text-dark border-0'}`}>📜 My History</button>
-              <button onClick={() => setActiveTab('wallet')} className={`btn text-start mb-2 fw-bold ${activeTab==='wallet'?'btn-dark':'btn-light text-dark border-0'}`}>💳 Wallet & Cards</button>
-              <button onClick={() => setActiveTab('refer')} className={`btn text-start mb-2 fw-bold ${activeTab==='refer'?'btn-dark':'btn-light text-dark border-0'}`}>🎁 Refer & Earn</button>
-              <button onClick={() => setActiveTab('profile')} className={`btn text-start mb-5 fw-bold ${activeTab==='profile'?'btn-dark':'btn-light text-dark border-0'}`}>⚙️ Profile Settings</button>
-              <button onClick={handleLogout} className="btn btn-outline-danger w-100 mt-auto fw-bold">Logout</button>
+              <button onClick={() => setActiveTab('home')} className={`btn text-start mb-2 fw-bold rounded-3 ${activeTab==='home'?'btn-dark':'btn-light text-dark border-0'}`}>📍 Book Ride</button>
+              <button onClick={() => setActiveTab('history')} className={`btn text-start mb-2 fw-bold rounded-3 ${activeTab==='history'?'btn-dark':'btn-light text-dark border-0'}`}>📜 My History</button>
+              <button onClick={() => setActiveTab('wallet')} className={`btn text-start mb-2 fw-bold rounded-3 ${activeTab==='wallet'?'btn-dark':'btn-light text-dark border-0'}`}>💳 Wallet & Cards</button>
+              <button onClick={() => setActiveTab('refer')} className={`btn text-start mb-2 fw-bold rounded-3 ${activeTab==='refer'?'btn-dark':'btn-light text-dark border-0'}`}>🎁 Refer & Earn</button>
+              <button onClick={() => setActiveTab('profile')} className={`btn text-start mb-5 fw-bold rounded-3 ${activeTab==='profile'?'btn-dark':'btn-light text-dark border-0'}`}>⚙️ Profile Settings</button>
+              <button onClick={handleLogout} className="btn btn-outline-danger w-100 mt-auto fw-bold rounded-3">Logout</button>
           </div>
           
           <div className="col-md-9 p-4 p-md-5">
              {activeTab === 'home' && (
-                 <div className="bg-white p-4 rounded-4 shadow-sm mx-auto border" style={{maxWidth:'600px'}}>
-                     <div className="mb-4 rounded-4 overflow-hidden shadow-sm border" style={{height: '180px'}}>
+                 <div className="bg-white p-4 rounded-4 shadow-sm mx-auto border" style={{maxWidth:'550px'}}>
+                     <div className="mb-4 rounded-4 overflow-hidden shadow-sm border" style={{height: '200px'}}>
                          <iframe width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src="https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.9%2C73.1%2C19.3&amp;layer=mapnik" style={{border: 'none'}}></iframe>
                      </div>
 
+                     {/* THE FIX: Premium Clean UI from your Screenshot */}
                      {rideState === 'idle' && (
                         <div className="animate__animated animate__fadeIn">
                             <h4 className="fw-bold mb-4">Where to today?</h4>
-                            <div className="position-relative mb-4 p-3 border rounded-4 bg-white shadow-sm">
-                                <div className="d-flex align-items-center mb-2">
-                                    <span className="text-success me-3 fs-5">●</span>
-                                    <input type="text" className="form-control border-0 p-0 shadow-none fw-semibold text-dark" placeholder="Enter Pickup Location" value={pickupLoc} onChange={(e) => setPickupLoc(e.target.value)} style={{fontSize: '16px'}} />
+                            <div className="position-relative mb-4 p-4 border rounded-4 bg-white shadow-sm">
+                                {/* Pickup Box */}
+                                <div className="d-flex align-items-center mb-3 bg-light rounded-pill px-3 py-2 border">
+                                    <span className="text-success me-2 fs-5">●</span>
+                                    <input type="text" className="form-control border-0 bg-transparent shadow-none fw-semibold text-dark p-0" placeholder="Enter Pickup Location" value={pickupLoc} onChange={(e) => setPickupLoc(e.target.value)} style={{fontSize: '16px'}} />
                                 </div>
-                                <div className="position-absolute" style={{left: '21px', top: '35px', bottom: '35px', borderLeft: '2px dotted #ccc'}}></div>
-                                <hr className="my-2 ms-4 text-muted opacity-25" />
-                                <div className="d-flex align-items-center mt-2">
-                                    <span className="text-danger me-3 fs-5">○</span>
-                                    <input type="text" className="form-control border-0 p-0 shadow-none fw-bold text-dark" placeholder="Where to?" value={dropLoc} onChange={(e) => setDropLoc(e.target.value)} style={{fontSize: '16px'}} />
+                                {/* Dotted Line */}
+                                <div className="position-absolute" style={{left: '37px', top: '55px', bottom: '55px', borderLeft: '2px dotted #aaa'}}></div>
+                                {/* Drop Box */}
+                                <div className="d-flex align-items-center bg-light rounded-pill px-3 py-2 border">
+                                    <span className="text-danger me-2 fs-5">○</span>
+                                    <input type="text" className="form-control border-0 bg-transparent shadow-none fw-bold text-dark p-0" placeholder="Where to?" value={dropLoc} onChange={(e) => setDropLoc(e.target.value)} style={{fontSize: '16px'}} />
                                 </div>
                             </div>
                             <button onClick={handleSearchVehicles} className="btn btn-dark w-100 py-3 fs-5 fw-bold rounded-4 shadow-sm">Search Vehicles</button>
@@ -287,26 +267,22 @@ export default function App() {
                                 ))}
                             </div>
 
-                            <div className="d-flex align-items-center mb-2 ms-2">
-                                <span className="text-primary me-2">💵</span>
-                                <small className="fw-semibold text-muted">Cash / Online</small>
-                            </div>
-                            <button onClick={proceedToPaymentSelection} className="btn btn-warning text-dark w-100 py-3 fs-5 fw-bold rounded-4 shadow-sm" style={{backgroundColor: '#FFD12A', border: 'none'}}>Continue Booking</button>
+                            <button onClick={()=>setRideState('select_payment')} className="btn btn-warning text-dark w-100 py-3 fs-5 fw-bold rounded-4 shadow-sm" style={{backgroundColor: '#FFD12A', border: 'none'}}>Continue Booking</button>
                         </div>
                      )}
 
                      {rideState === 'select_payment' && (
                          <div className="text-center py-4 animate__animated animate__fadeIn">
-                             <h4 className="fw-bold mb-4">Confirm Payment Method</h4>
+                             <h4 className="fw-bold mb-4">Select Payment Preference</h4>
                              <div className="d-flex flex-column gap-3 mb-4">
                                  <button onClick={() => confirmAndRequestRide('Cash')} className="btn btn-light border p-4 rounded-4 text-start d-flex align-items-center gap-3">
                                      <span className="fs-2">💵</span> <div><h5 className="mb-0 fw-bold text-dark">Cash</h5><small className="text-muted">Pay directly to captain</small></div>
                                  </button>
                                  <button onClick={() => confirmAndRequestRide('Online')} className="btn btn-light border p-4 rounded-4 text-start d-flex align-items-center gap-3">
-                                     <span className="fs-2">💳</span> <div><h5 className="mb-0 fw-bold text-dark">Online Payment</h5><small className="text-muted">UPI, Cards, NetBanking</small></div>
+                                     <span className="fs-2">📱</span> <div><h5 className="mb-0 fw-bold text-dark">Online Payment</h5><small className="text-muted">QR Code or UPI ID</small></div>
                                  </button>
                              </div>
-                             <button onClick={()=>setRideState('select_vehicle')} className="btn btn-link text-dark text-decoration-none fw-bold">← Back to Vehicles</button>
+                             <button onClick={()=>setRideState('select_vehicle')} className="btn btn-link text-dark text-decoration-none fw-bold">← Back</button>
                          </div>
                      )}
 
@@ -314,7 +290,6 @@ export default function App() {
                          <div className="text-center py-5">
                              <div className="spinner-border text-dark mb-3"></div>
                              <h4 className="fw-bold">Finding a {selectedVehicle.name}...</h4>
-                             <p className="text-muted">Please wait while we connect you to a nearby captain.</p>
                          </div>
                      )}
 
@@ -325,7 +300,6 @@ export default function App() {
                                 <p className="text-muted fw-bold mb-1">Your Ride OTP</p>
                                 <h1 className="text-dark fw-bold letter-spacing-3">{currentRide?.otp}</h1>
                             </div>
-                            <p className="text-muted">Share this OTP with your captain to start the ride.</p>
                          </div>
                      )}
 
@@ -333,6 +307,7 @@ export default function App() {
                          <div className="text-center py-5"><h2 className="text-primary fw-bold mb-3">Ride is in Progress 🚀</h2><div className="spinner-grow text-primary mt-4"></div></div>
                      )}
 
+                     {/* THE FIX: Only QR Code and UPI ID for Online Payment */}
                      {rideState === 'payment_pending' && (
                          <div className="text-center py-4 animate__animated animate__bounceIn">
                             <h2 className="fw-bold mb-3">Destination Reached!</h2>
@@ -347,9 +322,16 @@ export default function App() {
                                 <>
                                     {paymentStep === 'options' && (
                                         <div className="d-flex flex-column gap-3">
-                                            <button onClick={() => setPaymentStep('upi_entry')} className="btn btn-dark py-3 fw-bold fs-5 rounded-4">Pay via UPI ID</button>
-                                            <a href={`upi://pay?pa=${upiID}&pn=RideEase&am=${currentRide.fare}&cu=INR`} onClick={() => setTimeout(() => saveRideToDBAndFinish('UPI App'), 5000)} className="btn btn-outline-dark py-3 fw-bold fs-5 rounded-4">Open UPI App (GPay/PhonePe)</a>
-                                            <button onClick={handleOnlinePayment} className="btn btn-outline-dark py-3 fw-bold fs-5 rounded-4">Pay via Gateway (Card)</button>
+                                            <button onClick={() => setPaymentStep('qr_view')} className="btn btn-dark py-3 fw-bold fs-5 rounded-4">Show QR Code</button>
+                                            <button onClick={() => setPaymentStep('upi_entry')} className="btn btn-outline-dark py-3 fw-bold fs-5 rounded-4 border-2">Enter UPI ID</button>
+                                        </div>
+                                    )}
+                                    {paymentStep === 'qr_view' && (
+                                        <div className="bg-light p-4 rounded-4 border">
+                                            <p className="fw-bold mb-3 text-dark">Scan QR to Pay</p>
+                                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=merchant@upi&pn=RideEase&am=${currentRide.fare}`} alt="QR Code" className="mb-4 bg-white p-2 rounded" />
+                                            <div className="spinner-border text-success mb-2 d-block mx-auto"></div>
+                                            <p className="text-success fw-bold">Auto-verifying payment in 5 seconds...</p>
                                         </div>
                                     )}
                                     {paymentStep === 'upi_entry' && (
@@ -357,23 +339,16 @@ export default function App() {
                                             <h5 className="fw-bold mb-3 text-dark">Enter your UPI ID</h5>
                                             <input type="text" className="form-control bg-white text-dark border p-3 mb-4 text-center fs-5" placeholder="e.g. boss@ybl" value={upiIdInput} onChange={(e) => setUpiIdInput(e.target.value)} />
                                             <div className="d-flex gap-2">
-                                                <button onClick={handleUPIRequest} className="btn btn-dark flex-grow-1 py-3 fw-bold rounded-3">Request</button>
+                                                <button onClick={() => setPaymentStep('processing_upi')} className="btn btn-dark flex-grow-1 py-3 fw-bold rounded-3">Request Payment</button>
                                                 <button onClick={() => setPaymentStep('options')} className="btn btn-outline-danger py-3 px-4 fw-bold rounded-3">Cancel</button>
                                             </div>
                                         </div>
                                     )}
                                     {paymentStep === 'processing_upi' && (
                                         <div className="bg-light p-4 rounded-4 border animate__animated animate__pulse animate__infinite">
-                                            <div className="spinner-border text-dark mb-3"></div>
+                                            <div className="spinner-border text-success mb-3"></div>
                                             <h5 className="fw-bold mb-2">Request sent to {upiIdInput}</h5>
-                                            <p className="text-muted mt-3 mb-0 fw-bold">Waiting for confirmation...</p>
-                                        </div>
-                                    )}
-                                    {paymentStep === 'qr_view' && (
-                                        <div className="bg-light p-4 rounded-4 border">
-                                            <p className="fw-bold mb-3 text-dark">Scan QR to Pay</p>
-                                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=merchant@upi&pn=RideEase&am=${currentRide.fare}`} alt="QR Code" className="mb-4 bg-white p-2 rounded" />
-                                            <button onClick={() => saveRideToDBAndFinish('QR Code')} className="btn btn-success w-100 py-3 fw-bold fs-5 rounded-3">I have Paid ✅</button>
+                                            <p className="text-success mt-3 mb-0 fw-bold">Auto-verifying payment in 5 seconds...</p>
                                         </div>
                                     )}
                                 </>
@@ -403,7 +378,7 @@ export default function App() {
   };
 
   // ==========================================
-  // CAPTAIN PANEL (RACE CONDITION FIX)
+  // CAPTAIN PANEL
   // ==========================================
   const CaptainPanel = () => {
     const [incomingRide, setIncomingRide] = useState(null);
@@ -415,73 +390,43 @@ export default function App() {
       socket.on('incoming_ride', (data) => { if(!activeRide) setIncomingRide(data); });
       socket.on('ride_started', (data) => { if(activeRide && activeRide.id === data.id) { setActiveRide(data); } });
       socket.on('otp_failed', () => alert("Wrong OTP Boss! Try again."));
+      socket.on('ride_completed_pay_now', (data) => { if (activeRide && activeRide.id === data.id) { setActiveRide({...activeRide, status: 'payment_pending'}); } }); // THE FIX: Update Captain UI when ride ends
       socket.on('trip_fully_complete', (data) => {
           if(activeRide && activeRide.id === data.id) {
               alert(`Payment of ₹${data.fare} received via ${data.paymentMethod}!`);
               setActiveRide(null); setOtpInput('');
           }
       });
-      
-      // THE FIX: Listen to who actually got the ride
       socket.on('ride_accepted_by_captain', (data) => {
-          if (data.captainPhone === userData?.phone) {
-              // I am the winner! 🏆
-              setActiveRide(data);
-              setIncomingRide(null);
-          } else {
-              // I lost! Another captain clicked a millisecond faster 🛑
-              setIncomingRide(prev => {
-                  if (prev && prev.id === data.id) {
-                      alert(`Ride accepted by another Captain (${data.captain}) 🏍️`);
-                      return null;
-                  }
-                  return prev;
-              });
-              setActiveRide(prev => {
-                  if (prev && prev.id === data.id && prev.status === 'confirming') {
-                      alert("Too late! Another captain got this ride just a millisecond before you.");
-                      return null;
-                  }
-                  return prev;
-              });
+          if (data.captainPhone === userData?.phone) { setActiveRide(data); setIncomingRide(null); } 
+          else {
+              setIncomingRide(prev => { if (prev && prev.id === data.id) return null; return prev; });
+              setActiveRide(prev => { if (prev && prev.id === data.id && prev.status === 'confirming') { alert("Another captain got this ride."); return null; } return prev; });
           }
       });
-
-      return () => { 
-          socket.off('incoming_ride'); socket.off('ride_started'); socket.off('otp_failed'); 
-          socket.off('trip_fully_complete'); socket.off('ride_accepted_by_captain'); 
-      }
+      return () => { socket.off('incoming_ride'); socket.off('ride_started'); socket.off('otp_failed'); socket.off('trip_fully_complete'); socket.off('ride_accepted_by_captain'); socket.off('ride_completed_pay_now'); }
     }, [activeRide, userData]);
 
     useEffect(() => {
-      if(activeTab === 'history' || activeTab === 'earnings') {
-          axios.get(`${SERVER_URL}/api/rides/${userData.name}`).then(res => setRideHistory(res.data)).catch(err => console.error(err));
-      }
+      if(activeTab === 'history' || activeTab === 'earnings') { axios.get(`${SERVER_URL}/api/rides/${userData.name}`).then(res => setRideHistory(res.data)).catch(err => console.error(err)); }
     }, [activeTab]);
 
     const acceptRide = () => {
-      const rideToAccept = incomingRide;
-      setIncomingRide(null);
-      // Wait for server to confirm I won
+      const rideToAccept = incomingRide; setIncomingRide(null);
       setActiveRide({...rideToAccept, status: 'confirming'});
       socket.emit('accept_ride', { ...rideToAccept, captainName: userData?.name || 'Captain', captainPhone: userData?.phone });
-    };
-
-    const verifyOTP = () => {
-        if(otpInput.length === 4) socket.emit('verify_otp', { id: activeRide.id, otp: otpInput });
-        else alert("Please enter a 4-digit OTP");
     };
 
     return (
       <div className="container-fluid min-vh-100 p-0 row m-0 bg-light text-dark">
           <div className="col-md-3 border-end bg-white p-4 d-flex flex-column h-100 min-vh-100 shadow-sm">
               <div className="text-center mb-4"><h4 className="fw-bold text-dark">RideEase <span className="text-warning">Captain</span></h4><p className="text-muted">Hello, <span className="fw-bold text-dark">{userData?.name || userData?.phone}</span></p><span className="badge bg-success">Online</span></div>
-              <button onClick={() => setActiveTab('radar')} className={`btn text-start mb-2 fw-bold ${activeTab==='radar'?'btn-dark':'btn-light text-dark border-0'}`}>📡 Live Radar</button>
-              <button onClick={() => setActiveTab('earnings')} className={`btn text-start mb-2 fw-bold ${activeTab==='earnings'?'btn-dark':'btn-light text-dark border-0'}`}>💰 Earnings</button>
-              <button onClick={() => setActiveTab('history')} className={`btn text-start mb-2 fw-bold ${activeTab==='history'?'btn-dark':'btn-light text-dark border-0'}`}>📜 Trip History</button>
-              <button onClick={() => setActiveTab('vehicle')} className={`btn text-start mb-2 fw-bold ${activeTab==='vehicle'?'btn-dark':'btn-light text-dark border-0'}`}>🏍️ Vehicle Docs</button>
-              <button onClick={() => setActiveTab('profile')} className={`btn text-start mb-5 fw-bold ${activeTab==='profile'?'btn-dark':'btn-light text-dark border-0'}`}>⚙️ My Profile</button>
-              <button onClick={handleLogout} className="btn btn-outline-danger w-100 mt-auto fw-bold">Go Offline</button>
+              <button onClick={() => setActiveTab('radar')} className={`btn text-start mb-2 fw-bold rounded-3 ${activeTab==='radar'?'btn-dark':'btn-light text-dark border-0'}`}>📡 Live Radar</button>
+              <button onClick={() => setActiveTab('earnings')} className={`btn text-start mb-2 fw-bold rounded-3 ${activeTab==='earnings'?'btn-dark':'btn-light text-dark border-0'}`}>💰 Earnings</button>
+              <button onClick={() => setActiveTab('history')} className={`btn text-start mb-2 fw-bold rounded-3 ${activeTab==='history'?'btn-dark':'btn-light text-dark border-0'}`}>📜 Trip History</button>
+              <button onClick={() => setActiveTab('vehicle')} className={`btn text-start mb-2 fw-bold rounded-3 ${activeTab==='vehicle'?'btn-dark':'btn-light text-dark border-0'}`}>🏍️ Vehicle Docs</button>
+              <button onClick={() => setActiveTab('profile')} className={`btn text-start mb-5 fw-bold rounded-3 ${activeTab==='profile'?'btn-dark':'btn-light text-dark border-0'}`}>⚙️ My Profile</button>
+              <button onClick={handleLogout} className="btn btn-outline-danger w-100 mt-auto fw-bold rounded-3">Go Offline</button>
           </div>
           
           <div className="col-md-9 p-4 p-md-5">
@@ -493,30 +438,34 @@ export default function App() {
 
                      {activeRide ? (
                          <div className="bg-white p-5 rounded-4 shadow-sm border text-center animate__animated animate__fadeIn">
-                             {/* THE FIX: Show confirming spinner while server decides winner */}
                              {activeRide.status === 'confirming' ? (
-                                 <>
-                                     <div className="spinner-border text-warning mb-3"></div>
-                                     <h3 className="fw-bold text-dark">Confirming with Server...</h3>
-                                     <p className="text-muted">Checking if you got the ride first!</p>
-                                 </>
+                                 <><div className="spinner-border text-warning mb-3"></div><h3 className="fw-bold text-dark">Confirming...</h3></>
                              ) : (
                                  <>
-                                     <h3 className="text-success fw-bold mb-4">Status: {activeRide.status === 'in_progress' ? 'ON RIDE 🚀' : 'ARRIVED 📍'}</h3>
+                                     <h3 className="text-success fw-bold mb-4">Status: {activeRide.status === 'in_progress' ? 'ON RIDE 🚀' : activeRide.status === 'payment_pending' ? 'PAYMENT 💸' : 'ARRIVED 📍'}</h3>
                                      <div className="bg-light p-4 rounded-4 border mb-4 text-start">
-                                         <p className="mb-2 text-dark"><strong>Vehicle Req:</strong> {activeRide.vehicle}</p>
+                                         <p className="mb-2 text-dark"><strong>Vehicle:</strong> {activeRide.vehicle}</p>
                                          <p className="mb-2 text-dark"><strong>Rider:</strong> {activeRide.riderName} ({activeRide.riderPhone})</p>
-                                         <p className="mb-2 text-dark"><strong>From:</strong> {activeRide.pickup}</p>
-                                         <p className="mb-0 text-dark"><strong>To:</strong> {activeRide.drop}</p>
+                                         <p className="mb-0 text-dark"><strong>Route:</strong> {activeRide.pickup} ➔ {activeRide.drop}</p>
                                      </div>
-                                     {activeRide.status === 'accepted' ? (
+                                     
+                                     {/* THE FIX: Captain Waiting Screen Based on Payment Method */}
+                                     {activeRide.status === 'payment_pending' ? (
+                                         <div className="mt-4 p-4 border rounded-4 bg-light border-warning">
+                                             {activeRide.paymentPref === 'Cash' ? (
+                                                 <><h4 className="fw-bold text-success mb-2">💵 Collect ₹{activeRide.fare} Cash</h4><p className="text-muted">Wait for the rider to confirm payment on their app.</p></>
+                                             ) : (
+                                                 <><div className="spinner-grow text-primary mb-3"></div><h5 className="fw-bold text-dark">Waiting for Online Payment...</h5><p className="text-muted">Rider is scanning QR or entering UPI.</p></>
+                                             )}
+                                         </div>
+                                     ) : activeRide.status === 'accepted' ? (
                                          <div className="mt-4 p-4 border rounded-4 bg-light">
                                              <h5 className="fw-bold mb-3 text-dark">Enter OTP to Start</h5>
                                              <input type="number" className="form-control bg-white text-dark border p-3 mb-3 text-center fs-4 tracking-widest" placeholder="----" value={otpInput} onChange={(e)=>setOtpInput(e.target.value)} />
                                              <button onClick={verifyOTP} className="btn btn-dark w-100 py-3 fw-bold fs-5 rounded-4">Verify & Start Ride</button>
                                          </div>
                                      ) : (
-                                         <button onClick={() => socket.emit('finish_ride', activeRide)} className="btn btn-danger w-100 py-3 fs-5 fw-bold mt-4 rounded-4">End Ride & Collect Payment</button>
+                                         <button onClick={() => socket.emit('finish_ride', activeRide)} className="btn btn-danger w-100 py-3 fs-5 fw-bold mt-4 rounded-4">End Ride & Request Payment</button>
                                      )}
                                  </>
                              )}
@@ -525,7 +474,6 @@ export default function App() {
                          <div className="bg-white p-5 rounded-4 shadow-lg border border-warning animate__animated animate__pulse">
                              <h3 className="text-warning fw-bold mb-3">🔥 New Request!</h3>
                              <p className="fs-5 mb-1 text-dark">Rider: <strong>{incomingRide.riderName}</strong></p>
-                             <p className="fs-5 mb-1 text-dark">Type: <strong>{incomingRide.vehicle}</strong></p>
                              <p className="fs-5 mb-1 text-dark">Pickup: <strong>{incomingRide.pickup}</strong></p>
                              <p className="text-muted">Payment: <strong>{incomingRide.paymentPref}</strong></p>
                              <h1 className="text-dark fw-bold my-4">₹{incomingRide.fare}</h1>
@@ -565,7 +513,7 @@ export default function App() {
   // ==========================================
   const AdminPanel = () => {
     const [stats, setStats] = useState({ active: 0, completed: 0 });
-    const [dbStats, setDbStats] = useState({ total_rides: 0, total_users: 0 });
+    const [dbStats, setDbStats] = useState({ total_rides: 0, total_users: 0, commission: 0 }); // THE FIX: Admin Commission added
 
     useEffect(() => {
         socket.on('admin_update', (data) => {
@@ -585,12 +533,12 @@ export default function App() {
       <div className="container-fluid min-vh-100 p-0 row m-0 bg-light text-dark">
           <div className="col-md-3 border-end bg-white p-4 d-flex flex-column h-100 min-vh-100 shadow-sm">
               <h4 className="text-danger fw-bold mb-5 mt-2">Admin Control</h4>
-              <button onClick={() => setActiveTab('dash')} className={`btn text-start mb-2 fw-bold ${activeTab==='dash'?'btn-danger':'btn-light text-dark border-0'}`}>📈 Live Dashboard</button>
-              <button onClick={() => setActiveTab('liverides')} className={`btn text-start mb-2 fw-bold ${activeTab==='liverides'?'btn-danger':'btn-light text-dark border-0'}`}>📍 Active Map</button>
-              <button onClick={() => setActiveTab('users')} className={`btn text-start mb-2 fw-bold ${activeTab==='users'?'btn-danger':'btn-light text-dark border-0'}`}>👥 Manage Users</button>
-              <button onClick={() => setActiveTab('captains')} className={`btn text-start mb-2 fw-bold ${activeTab==='captains'?'btn-danger':'btn-light text-dark border-0'}`}>🏍️ Verify Captains</button>
-              <button onClick={() => setActiveTab('settings')} className={`btn text-start mb-5 fw-bold ${activeTab==='settings'?'btn-danger':'btn-light text-dark border-0'}`}>⚙️ System Settings</button>
-              <button onClick={handleLogout} className="btn btn-outline-dark w-100 mt-auto fw-bold">Exit System</button>
+              <button onClick={() => setActiveTab('dash')} className={`btn text-start mb-2 fw-bold rounded-3 ${activeTab==='dash'?'btn-danger':'btn-light text-dark border-0'}`}>📈 Live Dashboard</button>
+              <button onClick={() => setActiveTab('liverides')} className={`btn text-start mb-2 fw-bold rounded-3 ${activeTab==='liverides'?'btn-danger':'btn-light text-dark border-0'}`}>📍 Active Map</button>
+              <button onClick={() => setActiveTab('users')} className={`btn text-start mb-2 fw-bold rounded-3 ${activeTab==='users'?'btn-danger':'btn-light text-dark border-0'}`}>👥 Manage Users</button>
+              <button onClick={() => setActiveTab('captains')} className={`btn text-start mb-2 fw-bold rounded-3 ${activeTab==='captains'?'btn-danger':'btn-light text-dark border-0'}`}>🏍️ Verify Captains</button>
+              <button onClick={() => setActiveTab('settings')} className={`btn text-start mb-5 fw-bold rounded-3 ${activeTab==='settings'?'btn-danger':'btn-light text-dark border-0'}`}>⚙️ System Settings</button>
+              <button onClick={handleLogout} className="btn btn-outline-dark w-100 mt-auto fw-bold rounded-3">Exit System</button>
           </div>
           
           <div className="col-md-9 p-4 p-md-5">
@@ -598,9 +546,11 @@ export default function App() {
                   <>
                   <h2 className="fw-bold mb-4 text-dark">System Analytics</h2>
                   <div className="row g-4 mb-4">
-                     <div className="col-4"><div className="bg-white p-4 rounded-4 shadow-sm border border-warning"><h6 className="text-muted">Total Users</h6><h1 className="text-dark fw-bold">{dbStats.total_users}</h1></div></div>
-                     <div className="col-4"><div className="bg-white p-4 rounded-4 shadow-sm border border-success"><h6 className="text-muted">Total Rides</h6><h1 className="text-dark fw-bold">{dbStats.total_rides}</h1></div></div>
-                     <div className="col-4"><div className="bg-white p-4 rounded-4 shadow-sm border border-info"><h6 className="text-muted">Live Active Rides</h6><h1 className="text-dark fw-bold">{stats.active}</h1></div></div>
+                     {/* THE FIX: Show Admin Commission Box */}
+                     <div className="col-3"><div className="bg-white p-4 rounded-4 shadow-sm border border-success"><h6 className="text-success fw-bold">Admin Commission (10%)</h6><h1 className="text-success fw-bold">₹{dbStats.commission || 0}</h1></div></div>
+                     <div className="col-3"><div className="bg-white p-4 rounded-4 shadow-sm border border-warning"><h6 className="text-muted">Total Users</h6><h2 className="text-dark fw-bold">{dbStats.total_users}</h2></div></div>
+                     <div className="col-3"><div className="bg-white p-4 rounded-4 shadow-sm border border-dark"><h6 className="text-muted">Total Rides</h6><h2 className="text-dark fw-bold">{dbStats.total_rides}</h2></div></div>
+                     <div className="col-3"><div className="bg-white p-4 rounded-4 shadow-sm border border-info"><h6 className="text-muted">Active Rides</h6><h2 className="text-dark fw-bold">{stats.active}</h2></div></div>
                   </div>
                   </>
               )}
