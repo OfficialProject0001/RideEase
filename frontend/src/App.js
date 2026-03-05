@@ -163,7 +163,6 @@ export default function App() {
       return () => { socket.off('ride_accepted_by_captain'); socket.off('ride_started'); socket.off('ride_completed_pay_now'); socket.off('trip_fully_complete'); }
     }, []);
 
-    // THE FIX: 5-Second Auto Payment System
     useEffect(() => {
         let timer;
         if (rideState === 'payment_pending' && (paymentStep === 'processing_upi' || paymentStep === 'qr_view')) {
@@ -225,19 +224,15 @@ export default function App() {
                          <iframe width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src="https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.9%2C73.1%2C19.3&amp;layer=mapnik" style={{border: 'none'}}></iframe>
                      </div>
 
-                     {/* THE FIX: Premium Clean UI from your Screenshot */}
                      {rideState === 'idle' && (
                         <div className="animate__animated animate__fadeIn">
                             <h4 className="fw-bold mb-4">Where to today?</h4>
                             <div className="position-relative mb-4 p-4 border rounded-4 bg-white shadow-sm">
-                                {/* Pickup Box */}
                                 <div className="d-flex align-items-center mb-3 bg-light rounded-pill px-3 py-2 border">
                                     <span className="text-success me-2 fs-5">●</span>
                                     <input type="text" className="form-control border-0 bg-transparent shadow-none fw-semibold text-dark p-0" placeholder="Enter Pickup Location" value={pickupLoc} onChange={(e) => setPickupLoc(e.target.value)} style={{fontSize: '16px'}} />
                                 </div>
-                                {/* Dotted Line */}
                                 <div className="position-absolute" style={{left: '37px', top: '55px', bottom: '55px', borderLeft: '2px dotted #aaa'}}></div>
-                                {/* Drop Box */}
                                 <div className="d-flex align-items-center bg-light rounded-pill px-3 py-2 border">
                                     <span className="text-danger me-2 fs-5">○</span>
                                     <input type="text" className="form-control border-0 bg-transparent shadow-none fw-bold text-dark p-0" placeholder="Where to?" value={dropLoc} onChange={(e) => setDropLoc(e.target.value)} style={{fontSize: '16px'}} />
@@ -307,7 +302,6 @@ export default function App() {
                          <div className="text-center py-5"><h2 className="text-primary fw-bold mb-3">Ride is in Progress 🚀</h2><div className="spinner-grow text-primary mt-4"></div></div>
                      )}
 
-                     {/* THE FIX: Only QR Code and UPI ID for Online Payment */}
                      {rideState === 'payment_pending' && (
                          <div className="text-center py-4 animate__animated animate__bounceIn">
                             <h2 className="fw-bold mb-3">Destination Reached!</h2>
@@ -390,7 +384,7 @@ export default function App() {
       socket.on('incoming_ride', (data) => { if(!activeRide) setIncomingRide(data); });
       socket.on('ride_started', (data) => { if(activeRide && activeRide.id === data.id) { setActiveRide(data); } });
       socket.on('otp_failed', () => alert("Wrong OTP Boss! Try again."));
-      socket.on('ride_completed_pay_now', (data) => { if (activeRide && activeRide.id === data.id) { setActiveRide({...activeRide, status: 'payment_pending'}); } }); // THE FIX: Update Captain UI when ride ends
+      socket.on('ride_completed_pay_now', (data) => { if (activeRide && activeRide.id === data.id) { setActiveRide({...activeRide, status: 'payment_pending'}); } });
       socket.on('trip_fully_complete', (data) => {
           if(activeRide && activeRide.id === data.id) {
               alert(`Payment of ₹${data.fare} received via ${data.paymentMethod}!`);
@@ -415,6 +409,12 @@ export default function App() {
       const rideToAccept = incomingRide; setIncomingRide(null);
       setActiveRide({...rideToAccept, status: 'confirming'});
       socket.emit('accept_ride', { ...rideToAccept, captainName: userData?.name || 'Captain', captainPhone: userData?.phone });
+    };
+
+    // YAHI HAI WO FUNCTION JO MISSING THA!
+    const verifyOTP = () => {
+        if(otpInput.length === 4) socket.emit('verify_otp', { id: activeRide.id, otp: otpInput });
+        else alert("Please enter a 4-digit OTP");
     };
 
     return (
@@ -449,7 +449,6 @@ export default function App() {
                                          <p className="mb-0 text-dark"><strong>Route:</strong> {activeRide.pickup} ➔ {activeRide.drop}</p>
                                      </div>
                                      
-                                     {/* THE FIX: Captain Waiting Screen Based on Payment Method */}
                                      {activeRide.status === 'payment_pending' ? (
                                          <div className="mt-4 p-4 border rounded-4 bg-light border-warning">
                                              {activeRide.paymentPref === 'Cash' ? (
@@ -513,7 +512,7 @@ export default function App() {
   // ==========================================
   const AdminPanel = () => {
     const [stats, setStats] = useState({ active: 0, completed: 0 });
-    const [dbStats, setDbStats] = useState({ total_rides: 0, total_users: 0, commission: 0 }); // THE FIX: Admin Commission added
+    const [dbStats, setDbStats] = useState({ total_rides: 0, total_users: 0, commission: 0 });
 
     useEffect(() => {
         socket.on('admin_update', (data) => {
@@ -546,7 +545,6 @@ export default function App() {
                   <>
                   <h2 className="fw-bold mb-4 text-dark">System Analytics</h2>
                   <div className="row g-4 mb-4">
-                     {/* THE FIX: Show Admin Commission Box */}
                      <div className="col-3"><div className="bg-white p-4 rounded-4 shadow-sm border border-success"><h6 className="text-success fw-bold">Admin Commission (10%)</h6><h1 className="text-success fw-bold">₹{dbStats.commission || 0}</h1></div></div>
                      <div className="col-3"><div className="bg-white p-4 rounded-4 shadow-sm border border-warning"><h6 className="text-muted">Total Users</h6><h2 className="text-dark fw-bold">{dbStats.total_users}</h2></div></div>
                      <div className="col-3"><div className="bg-white p-4 rounded-4 shadow-sm border border-dark"><h6 className="text-muted">Total Rides</h6><h2 className="text-dark fw-bold">{dbStats.total_rides}</h2></div></div>
