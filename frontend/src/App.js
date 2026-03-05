@@ -118,28 +118,51 @@ export default function App() {
     const [name, setName] = useState('');
     const [city, setCity] = useState('');
     const [authStep, setAuthStep] = useState('phone');
+    const [isLoading, setIsLoading] = useState(false); // FIX: Loading State
 
     const handleSubmit = async (e) => {
       e.preventDefault();
+      setIsLoading(true);
       try {
         const payload = role === 'admin' ? { phone, password } : { phone };
         const res = await axios.post(`${SERVER_URL}/api/login`, payload);
-        if (res.data.isNew && role !== 'admin') { setAuthStep('register'); } 
-        else if (!res.data.isNew) { finalizeLogin(res.data.user); } 
-        else { alert("Invalid Credentials"); }
-      } catch { alert("Server is waking up, retry in 10 seconds!"); }
+        if (res.data.isNew && role !== 'admin') { 
+            setAuthStep('register'); 
+        } 
+        else if (!res.data.isNew) { 
+            finalizeLogin(res.data.user); 
+        } 
+        else { 
+            alert("Invalid Credentials! Please try again."); 
+        }
+      } catch (err) { 
+          console.error("Login Error:", err);
+          alert("Server is waking up from sleep mode (Render Free Tier). Please wait 40 seconds and click 'Continue' again!"); 
+      } finally {
+          setIsLoading(false);
+      }
     };
 
     const handleRegister = async (e) => {
       e.preventDefault();
-      const newUser = { phone, name, city, role };
-      await axios.post(`${SERVER_URL}/api/register`, newUser);
-      finalizeLogin(newUser);
+      setIsLoading(true);
+      try {
+          const newUser = { phone, name, city, role };
+          await axios.post(`${SERVER_URL}/api/register`, newUser);
+          finalizeLogin(newUser);
+      } catch (err) {
+          console.error("Registration Error:", err);
+          alert("Error creating account. Please try again.");
+      } finally {
+          setIsLoading(false);
+      }
     };
 
     const finalizeLogin = (user) => {
-      sessionStorage.setItem('rideease_user', JSON.stringify(user)); 
-      setUserData(user); socket.connect();
+      const finalUser = { ...user, role: role }; // FIX: Ensure role is strictly attached
+      sessionStorage.setItem('rideease_user', JSON.stringify(finalUser)); 
+      setUserData(finalUser); 
+      socket.connect();
       setActiveTab(role === 'captain' ? 'radar' : role === 'admin' ? 'dash' : 'home');
       setCurrentView('dashboard');
     };
@@ -162,7 +185,9 @@ export default function App() {
                   <input type="password" className="form-control text-white" placeholder="Enter secure password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
               )}
-              <button type="submit" className="btn btn-purple w-100 py-3 mt-3 fw-bold fs-5 rounded-pill">Continue</button>
+              <button type="submit" disabled={isLoading} className="btn btn-purple w-100 py-3 mt-3 fw-bold fs-5 rounded-pill">
+                  {isLoading ? 'Connecting to Server...' : 'Continue'}
+              </button>
             </form>
           ) : (
             <form onSubmit={handleRegister}>
@@ -175,7 +200,9 @@ export default function App() {
                 <label className="form-label text-purple fw-bold">City</label>
                 <input type="text" className="form-control text-white" placeholder="Mumbai" onChange={(e) => setCity(e.target.value)} required />
               </div>
-              <button type="submit" className="btn btn-purple w-100 py-3 fw-bold fs-5 rounded-pill">Create Account</button>
+              <button type="submit" disabled={isLoading} className="btn btn-purple w-100 py-3 fw-bold fs-5 rounded-pill">
+                  {isLoading ? 'Creating Account...' : 'Create Account'}
+              </button>
             </form>
           )}
         </div>
