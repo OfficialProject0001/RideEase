@@ -56,13 +56,6 @@ def register():
     conn.close()
     return jsonify({"success": True})
 
-@app.route('/api/create-order', methods=['POST'])
-def create_order():
-    try:
-        order = rzp_client.order.create(data={"amount": int(request.json.get('amount', 100)) * 100, "currency": "INR", "receipt": str(uuid.uuid4()), "payment_capture": 1})
-        return jsonify(order)
-    except Exception as e: return jsonify({"error": str(e)}), 500
-
 @app.route('/api/save-ride', methods=['POST'])
 def save_ride():
     data = request.json
@@ -84,6 +77,7 @@ def get_rides(identifier):
     conn.close()
     return jsonify(rides)
 
+# THE FIX: 10% Commission added for Admin
 @app.route('/api/admin/stats', methods=['GET'])
 def admin_stats():
     conn = sqlite3.connect('rideease.db')
@@ -92,8 +86,12 @@ def admin_stats():
     total_rides = c.fetchone()[0]
     c.execute("SELECT COUNT(*) FROM users")
     total_users = c.fetchone()[0]
+    c.execute("SELECT SUM(amount) FROM rides")
+    total_revenue = c.fetchone()[0] or 0
     conn.close()
-    return jsonify({"total_rides": total_rides, "total_users": total_users})
+    
+    admin_commission = int(total_revenue * 0.10) # 10% of total revenue
+    return jsonify({"total_rides": total_rides, "total_users": total_users, "total_revenue": total_revenue, "commission": admin_commission})
 
 active_rides = {}
 
@@ -111,13 +109,11 @@ def handle_ride_request(ride_data):
 def handle_ride_accept(data):
     ride_id = data['id']
     if ride_id in active_rides:
-        # THE FIX: Check if the ride is STILL 'searching' and hasn't been taken!
         if active_rides[ride_id]['status'] == 'searching':
             active_rides[ride_id]['status'] = 'accepted'
             active_rides[ride_id]['captain'] = data['captainName']
             active_rides[ride_id]['captainPhone'] = data.get('captainPhone', '') 
             emit('ride_accepted_by_captain', active_rides[ride_id], broadcast=True)
-        # If already accepted, the server silently ignores the second Captain's click
 
 @socketio.on('verify_otp')
 def handle_verify_otp(data):
