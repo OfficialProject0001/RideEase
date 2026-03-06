@@ -1,8 +1,7 @@
 Flask==3.0.0
-flask-cors==4.0.0
+Flask-Cors==4.0.0
 Flask-SocketIO==5.3.6
 razorpay==1.4.1
 setuptools
-
 gunicorn==21.2.0
 eventlet==0.33.3
