@@ -1,6 +1,5 @@
 # =========================================================
-# RIDEEASE - FULL PYTHON FLASK BACKEND (app.py)
-# Features: Auth, Ride Matching, Live GPS Map, Razorpay
+# RIDEEASE - FULL PYTHON FLASK BACKEND
 # =========================================================
 
 from flask import Flask, request, jsonify
@@ -14,24 +13,22 @@ import razorpay
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'vip_rideease_secret!'
 
-# Render Deployment ke liye CORS open rakhna zaroori hai
+# CORS open for Render deployment
 CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Razorpay Test Client Setup (Apni actual keys se replace karein)
+# Razorpay Test Client Setup
 RAZORPAY_KEY_ID = 'rzp_test_dummykey123'
 RAZORPAY_KEY_SECRET = 'dummysecret123'
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 active_rides = {}
 
-# SQLite Database Connection
 def get_db_connection():
     conn = sqlite3.connect('rideease.db')
     conn.row_factory = sqlite3.Row
     return conn
 
-# Create Tables when server starts
 with get_db_connection() as conn:
     conn.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT, phone TEXT UNIQUE, 
@@ -41,9 +38,7 @@ with get_db_connection() as conn:
         captain_name TEXT, pickup TEXT, dropoff TEXT, amount INTEGER, 
         status TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
 
-# ==========================================
-# 1. REST APIs (Auth & Database)
-# ==========================================
+# ---------------- APIs ----------------
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -107,13 +102,11 @@ def create_order():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ==========================================
-# 2. SOCKET.IO EVENTS (Real-time Radar)
-# ==========================================
+# ---------------- WebSockets ----------------
 
 @socketio.on('connect')
 def handle_connect():
-    print(f"🔌 Client connected")
+    pass
 
 @socketio.on('request_ride')
 def handle_request_ride(data):
