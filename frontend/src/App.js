@@ -3,8 +3,24 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-const SERVER_URL = "https://rideease-4m7a.onrender.com"; 
+// NAYA: Live Map Imports
+import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// BOSS: Yahan apna Python/Render URL aayega
+const SERVER_URL = "https://rideease-python.onrender.com"; 
 const socket = io(SERVER_URL, { autoConnect: false });
+
+// NAYA: Razorpay Loader
+const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+    });
+};
 
 export default function App() {
   const [currentView, setCurrentView] = useState('landing');
@@ -13,7 +29,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
 
   // ==========================================
-  // ULTRA-PREMIUM VIP CSS 🟣 + GOOGLE FONTS
+  // ULTRA-PREMIUM VIP CSS 🟣 + GOOGLE FONTS (Aapka Purana!)
   // ==========================================
   const VIPTheme = () => (
     <style>{`
@@ -25,11 +41,11 @@ export default function App() {
       }
       body { 
           background-color: #050505; 
-          font-family: 'Poppins', sans-serif; /* Soft font for reading */
+          font-family: 'Poppins', sans-serif; 
           color: #eaeaea;
       }
       h1, h2, h3, h4, h5, h6, .fw-bold { 
-          font-family: 'Montserrat', sans-serif; /* Bold, sharp font for headings */
+          font-family: 'Montserrat', sans-serif; 
       }
       .form-control, .form-control:focus { 
           color: #FFF !important; 
@@ -42,7 +58,6 @@ export default function App() {
       input:focus { border: 2px solid var(--vip-purple) !important; }
       .tracking-widest { letter-spacing: 0.5rem; }
       
-      /* Glassmorphism - Premium Glass Effect */
       .glass-card {
           background: rgba(20, 20, 20, 0.6);
           backdrop-filter: blur(15px);
@@ -51,7 +66,6 @@ export default function App() {
           box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
       }
       
-      /* VIP Custom Classes */
       .text-purple { color: var(--vip-purple) !important; }
       .bg-purple { background-color: var(--vip-purple) !important; color: white !important; }
       .border-purple { border-color: var(--vip-purple) !important; }
@@ -60,8 +74,10 @@ export default function App() {
       .btn-outline-purple { border: 2px solid var(--vip-purple) !important; color: var(--vip-purple) !important; background: transparent; transition: 0.3s; }
       .btn-outline-purple:hover { background-color: var(--vip-purple) !important; color: white !important; }
       
-      /* Receipt dotted line */
       .receipt-line { border-top: 2px dashed rgba(255,255,255,0.2); margin: 15px 0; }
+      
+      /* FIX: Leaflet Map Sizing */
+      .leaflet-container { width: 100%; height: 100%; border-radius: 15px; z-index: 1; }
     `}</style>
   );
 
@@ -118,7 +134,7 @@ export default function App() {
     const [name, setName] = useState('');
     const [city, setCity] = useState('');
     const [authStep, setAuthStep] = useState('phone');
-    const [isLoading, setIsLoading] = useState(false); // FIX: Loading State
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async (e) => {
       e.preventDefault();
@@ -137,7 +153,7 @@ export default function App() {
         }
       } catch (err) { 
           console.error("Login Error:", err);
-          alert("Server is waking up from sleep mode (Render Free Tier). Please wait 40 seconds and click 'Continue' again!"); 
+          alert("Server is waking up from sleep mode (Render Free Tier). Please wait 40 seconds and try again!"); 
       } finally {
           setIsLoading(false);
       }
@@ -159,7 +175,7 @@ export default function App() {
     };
 
     const finalizeLogin = (user) => {
-      const finalUser = { ...user, role: role }; // FIX: Ensure role is strictly attached
+      const finalUser = { ...user, role: role };
       sessionStorage.setItem('rideease_user', JSON.stringify(finalUser)); 
       setUserData(finalUser); 
       socket.connect();
@@ -177,12 +193,12 @@ export default function App() {
             <form onSubmit={handleSubmit}>
               <div className="mb-3 text-start">
                 <label className="form-label text-purple fw-bold">{role === 'admin' ? "Admin ID" : "Phone Number"}</label>
-                <input type="text" className="form-control text-white" placeholder={role === 'admin' ? "Enter Admin ID" : "10-digit mobile number"} value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                <input type="text" className="form-control text-white py-2" placeholder={role === 'admin' ? "Enter Admin ID" : "10-digit mobile number"} value={phone} onChange={(e) => setPhone(e.target.value)} required />
               </div>
               {role === 'admin' && (
                 <div className="mb-3 text-start">
                   <label className="form-label text-purple fw-bold">Password</label>
-                  <input type="password" className="form-control text-white" placeholder="Enter secure password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <input type="password" className="form-control text-white py-2" placeholder="Enter secure password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
               )}
               <button type="submit" disabled={isLoading} className="btn btn-purple w-100 py-3 mt-3 fw-bold fs-5 rounded-pill">
@@ -194,11 +210,11 @@ export default function App() {
               <h6 className="text-white fw-bold mb-4">Welcome! Complete your VIP profile.</h6>
               <div className="mb-3 text-start">
                 <label className="form-label text-purple fw-bold">Full Name</label>
-                <input type="text" className="form-control text-white" placeholder="John Doe" onChange={(e) => setName(e.target.value)} required />
+                <input type="text" className="form-control text-white py-2" placeholder="John Doe" onChange={(e) => setName(e.target.value)} required />
               </div>
               <div className="mb-4 text-start">
                 <label className="form-label text-purple fw-bold">City</label>
-                <input type="text" className="form-control text-white" placeholder="Mumbai" onChange={(e) => setCity(e.target.value)} required />
+                <input type="text" className="form-control text-white py-2" placeholder="Mumbai" onChange={(e) => setCity(e.target.value)} required />
               </div>
               <button type="submit" disabled={isLoading} className="btn btn-purple w-100 py-3 fw-bold fs-5 rounded-pill">
                   {isLoading ? 'Creating Account...' : 'Create Account'}
@@ -211,7 +227,7 @@ export default function App() {
   };
 
   // ==========================================
-  // CUSTOMER PANEL
+  // CUSTOMER PANEL (Now with Leaflet, OSRM & Razorpay)
   // ==========================================
   const CustomerPanel = () => {
     const [rideState, setRideState] = useState('idle'); 
@@ -220,32 +236,28 @@ export default function App() {
     
     const [pickupLoc, setPickupLoc] = useState(`${userData?.city || 'Mumbai'}`);
     const [dropLoc, setDropLoc] = useState('');
-    const [mapCoords, setMapCoords] = useState({ lat: 19.0760, lon: 72.8777 });
+    
+    // Naya Map States
+    const [mapCenter, setMapCenter] = useState([19.0760, 72.8777]);
+    const [routeCoords, setRouteCoords] = useState([]);
+    const [calculatedDistance, setCalculatedDistance] = useState(0);
 
+    // Dynamic Pricing Vehicles
     const vehicles = [
-        { id: 'bike', name: 'Bike', icon: '🏍️', price: 40, min: 35, max: 45 },
-        { id: 'auto', name: 'Auto', icon: '🛺', price: 65, min: 59, max: 72 },
-        { id: 'cab_eco', name: 'Cab Economy', icon: '🚕', price: 120, min: 108, max: 132 },
-        { id: 'cab_prem', name: 'Cab Premium', icon: '🚘', price: 180, min: 162, max: 198 },
-        { id: 'cab_xl', name: 'Cab XL', icon: '🚙', price: 210, min: 189, max: 231 },
+        { id: 'bike', name: 'Bike', icon: '🏍️', base: 20, perKm: 8 },
+        { id: 'auto', name: 'Auto', icon: '🛺', base: 30, perKm: 12 },
+        { id: 'cab_eco', name: 'Cab Economy', icon: '🚕', base: 60, perKm: 15 },
+        { id: 'cab_prem', name: 'Cab Premium', icon: '🚘', base: 100, perKm: 20 },
+        { id: 'cab_xl', name: 'Cab XL', icon: '🚙', base: 150, perKm: 25 },
     ];
     const [selectedVehicle, setSelectedVehicle] = useState(vehicles[1]); 
-    const [paymentStep, setPaymentStep] = useState('options'); 
-    const [upiIdInput, setUpiIdInput] = useState('');
-
-    const fetchMapLocation = async (address) => {
-        if (!address) return;
-        try {
-            const response = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
-            if (response.data && response.data.length > 0) {
-                setMapCoords({ lat: parseFloat(response.data[0].lat), lon: parseFloat(response.data[0].lon) });
-            }
-        } catch (error) { console.error("Map search error:", error); }
-    };
-
-    useEffect(() => { if(pickupLoc) fetchMapLocation(pickupLoc); }, []);
 
     useEffect(() => {
+      // Captain ki live location map par update karo
+      socket.on('captain_location_update', (coords) => {
+          setMapCenter([coords.lat, coords.lng]);
+      });
+
       socket.on('ride_accepted_by_captain', (data) => { if (data.riderPhone === userData.phone) { setCurrentRide(data); setRideState('accepted'); } });
       socket.on('ride_started', (data) => { if (data.riderPhone === userData.phone) { setRideState('in_progress'); } });
       socket.on('ride_completed_pay_now', (data) => { if (data.riderPhone === userData.phone) { setRideState('payment_pending'); } });
@@ -254,37 +266,94 @@ export default function App() {
           if (data.riderPhone === userData.phone) { 
               setRideState('completed'); 
               setTimeout(() => {
-                  setRideState('idle'); setCurrentRide(null); setPaymentStep('options'); setDropLoc('');
-              }, 6000); // Wait 6 seconds so user can read the receipt
+                  setRideState('idle'); setCurrentRide(null); setDropLoc(''); setRouteCoords([]);
+              }, 6000); 
           }
       });
-      return () => { socket.off('ride_accepted_by_captain'); socket.off('ride_started'); socket.off('ride_completed_pay_now'); socket.off('trip_fully_complete'); }
+      return () => { socket.off('ride_accepted_by_captain'); socket.off('ride_started'); socket.off('ride_completed_pay_now'); socket.off('trip_fully_complete'); socket.off('captain_location_update'); }
     }, []);
-
-    useEffect(() => {
-        let timer;
-        if (rideState === 'payment_pending' && (paymentStep === 'processing_upi' || paymentStep === 'qr_view')) {
-            timer = setTimeout(() => { saveRideToDBAndFinish('Online (Auto-Verified)'); }, 5000);
-        }
-        return () => clearTimeout(timer);
-    }, [paymentStep, rideState]);
 
     useEffect(() => {
       if(activeTab === 'history') { axios.get(`${SERVER_URL}/api/rides/${userData.phone}`).then(res => setRideHistory(res.data)).catch(err => console.error(err)); }
     }, [activeTab]);
 
-    const handleSearchVehicles = () => {
+    // OSRM Map Logic
+    const handleSearchVehicles = async () => {
         if(!pickupLoc || !dropLoc) return alert("Please enter both Pickup and Drop locations!");
-        setRideState('select_vehicle');
+        setRideState('searching'); // Show loading
+
+        try {
+            const pickRes = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(pickupLoc)}`);
+            const dropRes = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dropLoc)}`);
+            
+            if(pickRes.data.length > 0 && dropRes.data.length > 0) {
+                const pickLat = pickRes.data[0].lat, pickLng = pickRes.data[0].lon;
+                const dropLat = dropRes.data[0].lat, dropLng = dropRes.data[0].lon;
+                
+                setMapCenter([pickLat, pickLng]);
+
+                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${pickLng},${pickLat};${dropLng},${dropLat}?overview=full&geometries=geojson`;
+                const routeRes = await axios.get(osrmUrl);
+                
+                if(routeRes.data.routes.length > 0) {
+                    const distKm = (routeRes.data.routes[0].distance / 1000).toFixed(1);
+                    setCalculatedDistance(distKm);
+                    
+                    const path = routeRes.data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                    setRouteCoords(path);
+                    setRideState('select_vehicle');
+                }
+            } else {
+                alert("Location not found on map! Try adding city name.");
+                setRideState('idle');
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error calculating map route.");
+            setRideState('idle');
+        }
     };
+
+    const getDynamicFare = (v) => Math.round(v.base + (v.perKm * calculatedDistance));
 
     const requestRideWithPaymentPref = (method) => {
         setRideState('searching');
         socket.emit('request_ride', {
             riderName: userData?.name || 'Rider', riderPhone: userData.phone,
-            pickup: pickupLoc, drop: dropLoc, fare: selectedVehicle.price,
+            pickup: pickupLoc, drop: dropLoc, fare: getDynamicFare(selectedVehicle),
             vehicle: selectedVehicle.name, paymentPref: method
         });
+    };
+
+    // Razorpay Integration
+    const handleRazorpayPayment = async () => {
+        const res = await loadRazorpayScript();
+        if (!res) return alert("Razorpay SDK failed to load. Check your internet connection.");
+        
+        try {
+            // Backend se order id lao
+            const orderObj = await axios.post(`${SERVER_URL}/api/create-razorpay-order`, { amount: currentRide.fare });
+            
+            const options = {
+                key: "rzp_test_dummykey123", // Razorpay Test Key ID
+                amount: orderObj.data.amount,
+                currency: "INR",
+                name: "RideEase VIP",
+                description: `Payment for ${currentRide.vehicle}`,
+                order_id: orderObj.data.id,
+                handler: function (response) {
+                    // Payment successful
+                    saveRideToDBAndFinish('Razorpay Online');
+                },
+                prefill: { name: userData.name, contact: userData.phone },
+                theme: { color: "#8A2BE2" }
+            };
+            const paymentObject = new window.Razorpay(options);
+            paymentObject.open();
+        } catch (err) {
+            console.error(err);
+            alert("Payment gateway error. You can pay by Cash.");
+        }
     };
 
     const saveRideToDBAndFinish = async (finalMethod) => {
@@ -295,9 +364,6 @@ export default function App() {
             socket.emit('payment_done', { ...currentRide, paymentMethod: finalMethod });
         } catch(err) { console.error("Error saving ride", err); }
     };
-
-    const mapOffset = 0.03; 
-    const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${mapCoords.lon - mapOffset}%2C${mapCoords.lat - mapOffset}%2C${mapCoords.lon + mapOffset}%2C${mapCoords.lat + mapOffset}&layer=mapnik&marker=${mapCoords.lat}%2C${mapCoords.lon}`;
 
     return (
       <div className="container-fluid min-vh-100 p-0 row m-0 bg-black text-white">
@@ -316,8 +382,14 @@ export default function App() {
           <div className="col-md-9 p-4 p-md-5 bg-black">
              {activeTab === 'home' && (
                  <div className="glass-card p-4 rounded-4 mx-auto" style={{maxWidth:'600px'}}>
-                     <div className="mb-4 rounded-4 overflow-hidden shadow border border-purple" style={{height: '180px'}}>
-                         <iframe width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src={mapUrl} style={{border: 'none'}}></iframe>
+                     
+                     {/* NAYA: Live Leaflet Map */}
+                     <div className="mb-4 rounded-4 overflow-hidden shadow border border-purple position-relative" style={{height: '250px'}}>
+                         <MapContainer center={mapCenter} zoom={13} style={{ height: "100%", width: "100%" }}>
+                             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                             {routeCoords.length > 0 && <Polyline positions={routeCoords} color="#8A2BE2" weight={4} />}
+                             <Marker position={mapCenter}><Popup>Live GPS Data</Popup></Marker>
+                         </MapContainer>
                      </div>
 
                      {rideState === 'idle' && (
@@ -326,23 +398,23 @@ export default function App() {
                             <div className="bg-dark p-3 rounded-4 border border-purple mb-4">
                                 <div className="d-flex align-items-center mb-2">
                                     <span className="text-success me-3 fs-5">●</span>
-                                    <input type="text" className="form-control bg-transparent" placeholder="Pickup Location" value={pickupLoc} onChange={(e) => setPickupLoc(e.target.value)} onBlur={() => fetchMapLocation(pickupLoc)} />
+                                    <input type="text" className="form-control bg-transparent border-0" placeholder="Pickup Location" value={pickupLoc} onChange={(e) => setPickupLoc(e.target.value)} />
                                 </div>
                                 <hr className="my-2 text-purple opacity-50"/>
                                 <div className="d-flex align-items-center">
                                     <span className="text-danger me-3 fs-5">○</span>
-                                    <input type="text" className="form-control bg-transparent" placeholder="Drop Location" value={dropLoc} onChange={(e) => setDropLoc(e.target.value)} onBlur={() => fetchMapLocation(dropLoc || pickupLoc)} />
+                                    <input type="text" className="form-control bg-transparent border-0" placeholder="Drop Location" value={dropLoc} onChange={(e) => setDropLoc(e.target.value)} />
                                 </div>
                             </div>
-                            <button onClick={handleSearchVehicles} className="btn btn-purple w-100 py-3 fs-5 fw-bold rounded-4 shadow-sm">Search Vehicles</button>
+                            <button onClick={handleSearchVehicles} className="btn btn-purple w-100 py-3 fs-5 fw-bold rounded-4 shadow-sm">Calculate Route & Fare</button>
                         </div>
                      )}
 
                      {rideState === 'select_vehicle' && (
                         <div className="animate__animated animate__fadeInRight">
                             <div className="d-flex justify-content-between align-items-center mb-3">
-                                <h6 className="fw-bold mb-0 text-white">Select VIP Vehicle</h6>
-                                <button onClick={()=>setRideState('idle')} className="btn btn-sm btn-link text-purple text-decoration-none fw-bold">✎ Edit Route</button>
+                                <h6 className="fw-bold mb-0 text-white">Select Vehicle (Route: {calculatedDistance} KM)</h6>
+                                <button onClick={()=>setRideState('idle')} className="btn btn-sm btn-link text-purple text-decoration-none fw-bold">✎ Edit</button>
                             </div>
                             <div className="d-flex flex-column gap-2 mb-4" style={{maxHeight: '300px', overflowY: 'auto'}}>
                                 {vehicles.map(v => (
@@ -353,7 +425,7 @@ export default function App() {
                                             <span style={{fontSize: '2.5rem', filter: 'drop-shadow(2px 2px 2px rgba(0,0,0,0.1))'}}>{v.icon}</span>
                                             <span className="fw-bold text-white fs-5">{v.name}</span>
                                         </div>
-                                        <span className="fw-bold fs-6 text-purple">₹ {v.min} - ₹ {v.max}</span>
+                                        <span className="fw-bold fs-5 text-purple">₹ {getDynamicFare(v)}</span>
                                     </div>
                                 ))}
                             </div>
@@ -367,12 +439,11 @@ export default function App() {
                      {rideState === 'searching' && (
                          <div className="text-center py-5">
                              <div className="spinner-border text-purple mb-3"></div>
-                             <h4 className="fw-bold text-purple">Locating a VIP Captain...</h4>
-                             <p className="text-muted">Securing the best {selectedVehicle.name} for you.</p>
+                             <h4 className="fw-bold text-purple">Locating/Calculating...</h4>
+                             <p className="text-muted">Securing the best VIP Captain for you.</p>
                          </div>
                      )}
 
-                     {/* THE FIX: CAPTAIN DETAILS SHOWN TO CUSTOMER */}
                      {(rideState === 'accepted' || rideState === 'in_progress') && (
                          <div className="text-center py-4 animate__animated animate__zoomIn">
                             <h2 className="text-purple fw-bold mb-3">{rideState === 'accepted' ? 'Ride Confirmed! 🤩' : 'Cruising in Luxury 🚀'}</h2>
@@ -410,39 +481,10 @@ export default function App() {
                                     <button onClick={() => saveRideToDBAndFinish('Cash')} className="btn btn-purple w-100 py-3 fw-bold fs-5 rounded-pill">Confirm Cash Payment</button>
                                 </div>
                             ) : (
-                                <>
-                                    {paymentStep === 'options' && (
-                                        <div className="d-flex flex-column gap-3">
-                                            <button onClick={() => setPaymentStep('upi_entry')} className="btn btn-purple py-3 fw-bold fs-5 rounded-pill">Pay via UPI ID</button>
-                                            <button onClick={() => setPaymentStep('qr_view')} className="btn btn-outline-purple py-3 fw-bold fs-5 rounded-pill">Show QR Code</button>
-                                        </div>
-                                    )}
-                                    {paymentStep === 'upi_entry' && (
-                                        <div className="bg-black p-4 rounded-4 border border-purple animate__animated animate__fadeIn">
-                                            <h5 className="fw-bold mb-3 text-purple">Enter your UPI ID</h5>
-                                            <input type="text" className="form-control text-center fs-5" placeholder="boss@ybl" value={upiIdInput} onChange={(e) => setUpiIdInput(e.target.value)} />
-                                            <div className="d-flex gap-2 mt-4">
-                                                <button onClick={() => {if(upiIdInput) setPaymentStep('processing_upi'); else alert('Enter UPI');}} className="btn btn-purple flex-grow-1 py-3 fw-bold rounded-pill">Request Payment</button>
-                                                <button onClick={() => setPaymentStep('options')} className="btn btn-outline-danger py-3 px-4 fw-bold rounded-pill">Cancel</button>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {paymentStep === 'processing_upi' && (
-                                        <div className="text-center animate__animated animate__pulse animate__infinite mt-4">
-                                            <div className="spinner-border text-purple mb-3"></div>
-                                            <h5 className="text-purple fw-bold">Request Sent to {upiIdInput}</h5>
-                                            <p className="text-muted">Check your UPI app to complete payment. We'll lock the trip once confirmed.</p>
-                                        </div>
-                                    )}
-                                    {paymentStep === 'qr_view' && (
-                                        <div className="text-center p-3 animate__animated animate__fadeIn">
-                                            <p className="fw-bold mb-3 text-purple">Scan QR to Pay ₹{currentRide?.fare}</p>
-                                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=merchant@upi&pn=RideEase&am=${currentRide.fare}`} alt="QR Code" className="mb-4 bg-white p-2 rounded shadow-lg" />
-                                            <div className="spinner-border text-success mb-2 d-block mx-auto" style={{width: '1.5rem', height:'1.5rem'}}></div>
-                                            <p className="text-success fw-bold">Auto-verifying payment in 5 seconds...</p>
-                                        </div>
-                                    )}
-                                </>
+                                <div className="d-flex flex-column gap-3">
+                                    <button onClick={handleRazorpayPayment} className="btn btn-success py-3 fw-bold fs-5 rounded-pill shadow-lg">Secure Pay via Razorpay ✨</button>
+                                    <button onClick={() => saveRideToDBAndFinish('Online')} className="btn btn-outline-purple py-3 fw-bold rounded-pill">Test Bypass (Dummy Pay)</button>
+                                </div>
                             )}
                          </div>
                      )}
@@ -497,7 +539,7 @@ export default function App() {
   };
 
   // ==========================================
-  // CAPTAIN PANEL
+  // CAPTAIN PANEL (Now with GPS Sharing)
   // ==========================================
   const CaptainPanel = () => {
     const [incomingRide, setIncomingRide] = useState(null);
@@ -506,6 +548,15 @@ export default function App() {
     const [rideHistory, setRideHistory] = useState([]);
 
     useEffect(() => {
+      // NAYA: Live GPS Tracker - Captain ka GPS map Rider ko jayega
+      const watchId = navigator.geolocation.watchPosition(
+          (position) => {
+              socket.emit('update_location', { lat: position.coords.latitude, lng: position.coords.longitude });
+          },
+          (err) => console.log("GPS Location Error: Allow permission in browser"),
+          { enableHighAccuracy: true }
+      );
+
       socket.on('incoming_ride', (data) => { if(!activeRide) setIncomingRide(data); });
       socket.on('ride_started', (data) => { if(activeRide && activeRide.id === data.id) { setActiveRide(data); } });
       socket.on('otp_failed', () => alert("Wrong OTP Boss! Check again."));
@@ -516,7 +567,7 @@ export default function App() {
               if (prev && prev.id === data.id) { return {...prev, status: 'completed', paymentMethod: data.paymentMethod}; }
               return prev;
           });
-          setTimeout(() => { setActiveRide(null); setOtpInput(''); }, 8000); // 8 seconds to see receipt
+          setTimeout(() => { setActiveRide(null); setOtpInput(''); }, 8000); 
       });
 
       socket.on('ride_accepted_by_captain', (data) => {
@@ -526,7 +577,11 @@ export default function App() {
               setActiveRide(prev => { if (prev && prev.id === data.id && prev.status === 'confirming') { alert("Another captain accepted this ride!"); return null; } return prev; });
           }
       });
-      return () => { socket.off('incoming_ride'); socket.off('ride_started'); socket.off('otp_failed'); socket.off('trip_fully_complete'); socket.off('ride_accepted_by_captain'); socket.off('ride_completed_pay_now'); }
+      
+      return () => { 
+          navigator.geolocation.clearWatch(watchId);
+          socket.off('incoming_ride'); socket.off('ride_started'); socket.off('otp_failed'); socket.off('trip_fully_complete'); socket.off('ride_accepted_by_captain'); socket.off('ride_completed_pay_now'); 
+      }
     }, [activeRide, userData]);
 
     useEffect(() => {
@@ -565,13 +620,13 @@ export default function App() {
              {activeTab === 'radar' && (
                  <div className="mx-auto" style={{maxWidth:'600px'}}>
                      <div className="mb-4 rounded-4 overflow-hidden shadow-lg border border-purple" style={{height: '200px'}}>
-                         <iframe width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src="https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.9%2C73.1%2C19.3&amp;layer=mapnik" style={{border: 'none'}}></iframe>
+                         {/* Static Map for Radar Feel */}
+                         <iframe width="100%" height="100%" frameBorder="0" scrolling="no" src="https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.9%2C73.1%2C19.3&amp;layer=mapnik" style={{border: 'none'}}></iframe>
                      </div>
 
                      {activeRide ? (
                          <div className="glass-card p-5 rounded-4 text-center animate__animated animate__fadeIn">
                              
-                             {/* THE FIX: VIP EARNINGS RECEIPT FOR CAPTAIN */}
                              {activeRide.status === 'completed' ? (
                                  <div className="animate__animated animate__zoomIn">
                                      <h3 className="text-success fw-bold mt-2">✅ Trip Completed!</h3>
@@ -614,7 +669,7 @@ export default function App() {
                                              {activeRide.paymentPref === 'Cash' ? (
                                                  <><h4 className="fw-bold text-success mb-2">💵 Collect ₹{activeRide.fare} Cash</h4><p className="text-muted">Wait for the rider to confirm payment on their app.</p></>
                                              ) : (
-                                                 <><div className="spinner-grow text-purple mb-3"></div><h5 className="fw-bold text-white">Waiting for Online Payment...</h5><p className="text-muted">Rider is scanning QR or entering UPI.</p></>
+                                                 <><div className="spinner-grow text-purple mb-3"></div><h5 className="fw-bold text-white">Waiting for Online Payment...</h5><p className="text-muted">Rider is completing Razorpay Checkout.</p></>
                                              )}
                                          </div>
                                      ) : activeRide.status === 'accepted' ? (
@@ -645,7 +700,7 @@ export default function App() {
                          <div className="text-center mt-5">
                              <div className="spinner-grow text-purple mb-4" style={{width:'4rem', height:'4rem'}}></div>
                              <h3 className="fw-bold text-purple tracking-wide">Radar Active</h3>
-                             <p className="text-muted fs-5">Scanning the city for VIP requests...</p>
+                             <p className="text-muted fs-5">Scanning the city and broadcasting Live GPS...</p>
                          </div>
                      )}
                  </div>
