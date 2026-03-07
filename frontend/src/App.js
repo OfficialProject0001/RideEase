@@ -524,14 +524,19 @@ export default function App() {
         try {
             const orderObj = await axios.post(`${SERVER_URL}/api/create-razorpay-order`, { amount: currentRide.fare });
             const options = {
-                key: "rzp_test_dummykey123", 
+                
+                // ==========================================
+                // 💰 BOSS KI ASLI LIVE RAZORPAY KEY 💰
+                // ==========================================
+                key: "rzp_live_SOMYlrgNhCBKBC", 
+                
                 amount: orderObj.data.amount,
                 currency: "INR",
                 name: "RideEase VIP",
                 description: `Payment for ${currentRide.vehicle}`,
                 order_id: orderObj.data.id,
                 handler: function (response) {
-                    saveRideToDBAndFinish('Razorpay Online');
+                    saveRideToDBAndFinish('Razorpay Online (UPI/QR)');
                 },
                 prefill: { 
                     name: userData.name, 
