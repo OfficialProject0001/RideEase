@@ -22,7 +22,7 @@ L.Icon.Default.mergeOptions({
     shadowUrl: markerShadow,
 });
 
-// BOSS: AAPKA ASLI RENDER URL
+// BOSS: AAPKA ASLI RENDER URL YAHAN HAI
 const SERVER_URL = "https://rideease-4m7a.onrender.com"; 
 const socket = io(SERVER_URL, { autoConnect: false });
 
@@ -88,18 +88,14 @@ export default function App() {
           transition: all 0.3s ease;
       }
       
-      .form-control::placeholder { 
-          color: #666 !important; 
-      }
+      .form-control::placeholder { color: #666 !important; }
       
       input:focus { 
           border: 1px solid var(--vip-neon) !important; 
           box-shadow: 0 0 15px rgba(213, 0, 249, 0.25), inset 0 2px 4px rgba(0,0,0,0.5) !important; 
       }
       
-      .tracking-widest { 
-          letter-spacing: 0.5rem; 
-      }
+      .tracking-widest { letter-spacing: 0.5rem; }
       
       .glass-card {
           background: rgba(20, 20, 25, 0.65);
@@ -178,38 +174,18 @@ export default function App() {
           box-shadow: 0 0 20px rgba(138, 43, 226, 0.4);
       }
       
-      .receipt-line { 
-          border-top: 2px dashed rgba(255,255,255,0.2); 
-          margin: 15px 0; 
-      }
+      .receipt-line { border-top: 2px dashed rgba(255,255,255,0.2); margin: 15px 0; }
       
+      /* 🗺️ MAGIC: NATIVE DARK MODE MAP */
       .leaflet-layer, .leaflet-control-zoom-in, .leaflet-control-zoom-out, .leaflet-control-attribution {
         filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
       }
-      .leaflet-container { 
-          width: 100%; 
-          height: 100%; 
-          border-radius: 18px; 
-          background-color: #050508; 
-      }
+      .leaflet-container { width: 100%; height: 100%; border-radius: 18px; background-color: #050508; }
 
-      @keyframes mapPulse { 
-          0% { opacity: 0.2; } 
-          100% { opacity: 0.6; box-shadow: 0 0 50px rgba(213, 0, 249, 0.4); } 
-      }
-      @keyframes gradientShift { 
-          0% { background-position: 0% 50%; } 
-          50% { background-position: 100% 50%; } 
-          100% { background-position: 0% 50%; } 
-      }
-      @keyframes float { 
-          0% { transform: translateY(0px); } 
-          50% { transform: translateY(-8px); } 
-          100% { transform: translateY(0px); } 
-      }
-      .floating-element { 
-          animation: float 6s ease-in-out infinite; 
-      }
+      @keyframes mapPulse { 0% { opacity: 0.2; } 100% { opacity: 0.6; box-shadow: 0 0 50px rgba(213, 0, 249, 0.4); } }
+      @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+      @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-8px); } 100% { transform: translateY(0px); } }
+      .floating-element { animation: float 6s ease-in-out infinite; }
     `}</style>
   );
 
@@ -249,35 +225,19 @@ export default function App() {
   // 📄 REUSABLE HISTORY PDF GENERATOR
   const downloadHistoryPDF = (r) => {
       const pdf = new jsPDF('p', 'mm', 'a5');
-      pdf.setFillColor(15, 15, 15); 
-      pdf.rect(0, 0, 200, 300, 'F');
-      
-      pdf.setTextColor(138, 43, 226); 
-      pdf.setFont("helvetica", "bold"); 
-      pdf.setFontSize(24);
+      pdf.setFillColor(15, 15, 15); pdf.rect(0, 0, 200, 300, 'F');
+      pdf.setTextColor(138, 43, 226); pdf.setFont("helvetica", "bold"); pdf.setFontSize(24);
       pdf.text("RideEase VIP", 15, 25);
-      
-      pdf.setTextColor(255, 255, 255); 
-      pdf.setFontSize(12); 
-      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(255, 255, 255); pdf.setFontSize(12); pdf.setFont("helvetica", "normal");
       pdf.text("Past Ride Receipt", 15, 35);
-      
-      pdf.setDrawColor(138, 43, 226); 
-      pdf.line(15, 40, 133, 40);
-      
+      pdf.setDrawColor(138, 43, 226); pdf.line(15, 40, 133, 40);
       pdf.text(`Date: ${r[7]}`, 15, 50);
       pdf.text(`Pickup: ${r[3].substring(0,30)}...`, 15, 65);
       pdf.text(`Drop: ${r[4].substring(0,30)}...`, 15, 75);
-      
-      pdf.setTextColor(40, 167, 69); 
-      pdf.setFont("helvetica", "bold"); 
-      pdf.text(`Amount: Rs. ${r[5]}`, 15, 90);
-      
-      pdf.setTextColor(255, 255, 255); 
-      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(40, 167, 69); pdf.setFont("helvetica", "bold"); pdf.text(`Amount: Rs. ${r[5]}`, 15, 90);
+      pdf.setTextColor(255, 255, 255); pdf.setFont("helvetica", "normal");
       pdf.text(`Status: ${r[6]}`, 15, 100);
       pdf.text(`Captain: ${r[1]}`, 15, 110);
-      
       pdf.save(`RideEase_Past_Receipt_${r[0]}.pdf`);
   };
 
@@ -311,7 +271,7 @@ export default function App() {
   );
 
   // ==========================================
-  // AUTH PAGE (WITH MASTER BYPASS FOR ADMIN)
+  // AUTH PAGE (WITH 👑 NAYA ROHIT01 BYPASS)
   // ==========================================
   const AuthPage = () => {
     const [phone, setPhone] = useState(''); 
@@ -325,10 +285,10 @@ export default function App() {
       e.preventDefault(); 
       setIsLoading(true);
 
-      // 🚨 MASTER BYPASS: ADMIN KO DIRECT ENTRY 🚨
+      // 🚨 NAYA ADMIN ID & PASSWORD CHECK 🚨
       if (role === 'admin') {
-          if (phone.trim().toLowerCase() === 'admin' && password.trim() === 'admin123') {
-              finalizeLogin({ phone: 'Admin', role: 'admin', name: 'Super Admin' });
+          if (phone.trim() === 'Rohit01' && password.trim() === 'Rohit2580@') {
+              finalizeLogin({ phone: 'Rohit01', role: 'admin', name: 'Boss Rohit' });
               setIsLoading(false);
               return; 
           } else {
@@ -349,7 +309,7 @@ export default function App() {
             finalizeLogin(res.data.user); 
         }
       } catch (err) { 
-          alert("Server is waking up. Please wait 10 seconds and click Continue again!"); 
+          alert("Server is waking up. Please wait 5 seconds and click Continue again!"); 
           console.log(err);
       } finally { 
           setIsLoading(false); 
@@ -394,7 +354,7 @@ export default function App() {
                   <label className="form-label text-purple fw-bold">
                       {role === 'admin' ? "Admin ID" : "Phone Number"}
                   </label>
-                  <input type="text" className="form-control" placeholder={role === 'admin' ? "Enter Admin ID" : "10-digit number"} value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                  <input type="text" className="form-control" placeholder={role === 'admin' ? "Enter Rohit01" : "10-digit number"} value={phone} onChange={(e) => setPhone(e.target.value)} required />
               </div>
               
               {role === 'admin' && (
@@ -458,28 +418,19 @@ export default function App() {
       socket.on('captain_location_update', (coords) => setMapCenter([coords.lat, coords.lng]));
       
       socket.on('ride_accepted_by_captain', (data) => { 
-          if (data.riderPhone === userData.phone) { 
-              setCurrentRide(data); 
-              setRideState('accepted'); 
-          } 
+          if (data.riderPhone === userData.phone) { setCurrentRide(data); setRideState('accepted'); } 
       });
       
       socket.on('ride_started', (data) => { 
-          if (data.riderPhone === userData.phone) {
-              setRideState('in_progress'); 
-          }
+          if (data.riderPhone === userData.phone) setRideState('in_progress'); 
       });
       
       socket.on('ride_completed_pay_now', (data) => { 
-          if (data.riderPhone === userData.phone) {
-              setRideState('payment_pending'); 
-          }
+          if (data.riderPhone === userData.phone) setRideState('payment_pending'); 
       });
       
       socket.on('trip_fully_complete', (data) => { 
-          if (data.riderPhone === userData.phone) {
-              setRideState('completed'); 
-          }
+          if (data.riderPhone === userData.phone) setRideState('completed'); 
       });
 
       return () => { 
@@ -534,8 +485,9 @@ export default function App() {
 
     const handleVehicleSelection = (v) => {
         if(v.isDemo) { 
+            // 🚨 DEMO RIDE PASSWORD UPDATED TO ROHIT2580@
             const password = window.prompt("🔒 SECURE: Enter Admin Password for ₹1 Demo Ride:"); 
-            if(password !== "admin123") return alert("❌ Incorrect Password! Demo ride locked."); 
+            if(password !== "Rohit2580@") return alert("❌ Incorrect Password! Demo ride locked."); 
         }
         setSelectedVehicle(v);
     };
@@ -1244,7 +1196,7 @@ export default function App() {
   };
 
   // ==========================================
-  // ADMIN PANEL
+  // 👑 ADMIN PANEL (WITH 4 OPTIONS) 👑
   // ==========================================
   const AdminPanel = () => {
     const [stats, setStats] = useState({ active: 0, completed: 0 }); 
@@ -1277,12 +1229,16 @@ export default function App() {
 
     return (
       <div className="container-fluid min-vh-100 p-0 row m-0 text-white">
+          
+          {/* ADMIN SIDEBAR */}
           <div className="col-md-3 glass-card border-end-0 border-end border-danger p-4 d-flex flex-column h-100 min-vh-100 rounded-0 z-3" style={{borderRight: '1px solid rgba(255,255,255,0.05)'}}>
               
               <div className="text-center mb-5 mt-3 floating-element">
                   <h3 className="text-danger fw-bold tracking-widest text-shadow">ADMIN</h3>
+                  <div className="badge bg-danger text-white py-2 px-4 rounded-pill mt-2 fw-bold">Boss Rohit</div>
               </div>
               
+              {/* NAYE 4 OPTIONS */}
               <button onClick={() => setActiveTab('dash')} className={`btn text-start mb-3 fw-bold py-3 px-4 ${activeTab==='dash'?'btn-danger text-black':'btn-outline-danger text-white'}`}>
                   📈 Analytics Dashboard
               </button>
@@ -1290,38 +1246,49 @@ export default function App() {
               <button onClick={() => setActiveTab('liverides')} className={`btn text-start mb-3 fw-bold py-3 px-4 ${activeTab==='liverides'?'btn-danger text-black':'btn-outline-danger text-white'}`}>
                   📍 Live Global Map
               </button>
+
+              <button onClick={() => setActiveTab('users')} className={`btn text-start mb-3 fw-bold py-3 px-4 ${activeTab==='users'?'btn-danger text-black':'btn-outline-danger text-white'}`}>
+                  👥 User Management
+              </button>
+
+              <button onClick={() => setActiveTab('settings')} className={`btn text-start mb-3 fw-bold py-3 px-4 ${activeTab==='settings'?'btn-danger text-black':'btn-outline-danger text-white'}`}>
+                  ⚙️ Platform Settings
+              </button>
               
               <button onClick={handleLogout} className="btn btn-outline-secondary w-100 mt-auto fw-bold py-3 rounded-pill text-white">
                   System Logout
               </button>
           </div>
           
+          {/* ADMIN CONTENT */}
           <div className="col-md-9 p-4 p-md-5">
+              
+              {/* TAB 1: DASHBOARD */}
               {activeTab === 'dash' && (
                   <div className="animate__animated animate__fadeIn">
                       <h2 className="fw-bold mb-5 text-white">Platform <span className="text-gradient">Analytics</span></h2>
                       
                       <div className="row g-4 mb-5">
                           <div className="col-6 col-lg-3">
-                              <div className="glass-card p-4 border-success text-center hover-lift">
+                              <div className="glass-card p-4 border-success text-center">
                                   <h6 className="text-success fw-bold mb-3">Admin Commission (10%)</h6>
                                   <h2 className="text-success fw-bold m-0">₹{dbStats.commission || 0}</h2>
                               </div>
                           </div>
                           <div className="col-6 col-lg-3">
-                              <div className="glass-card p-4 border-purple text-center hover-lift">
+                              <div className="glass-card p-4 border-purple text-center">
                                   <h6 className="text-muted fw-bold mb-3">Total Users</h6>
                                   <h2 className="text-gradient fw-bold m-0">{dbStats.total_users}</h2>
                               </div>
                           </div>
                           <div className="col-6 col-lg-3">
-                              <div className="glass-card p-4 border-white text-center hover-lift">
+                              <div className="glass-card p-4 border-white text-center">
                                   <h6 className="text-muted fw-bold mb-3">Rides Locked</h6>
                                   <h2 className="text-white fw-bold m-0">{dbStats.total_rides}</h2>
                               </div>
                           </div>
                           <div className="col-6 col-lg-3">
-                              <div className="glass-card p-4 text-center hover-lift" style={{borderColor:'var(--vip-neon)'}}>
+                              <div className="glass-card p-4 text-center" style={{borderColor:'var(--vip-neon)'}}>
                                   <h6 className="text-muted fw-bold mb-3">Live Requests</h6>
                                   <h2 className="fw-bold m-0" style={{color:'var(--vip-neon)'}}>{stats.active}</h2>
                               </div>
@@ -1335,11 +1302,97 @@ export default function App() {
                   </div>
               )}
               
+              {/* TAB 2: LIVE MAP */}
               {activeTab === 'liverides' && (
                   <div className="glass-card p-5 animate__animated animate__fadeIn">
                       <h3 className="fw-bold text-gradient mb-5">Live Platform Tracking</h3>
                       <div className="overflow-hidden shadow-lg map-glow" style={{height: '500px', borderRadius:'24px'}}>
                           <iframe width="100%" height="100%" frameBorder="0" scrolling="no" src="https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.9%2C73.1%2C19.3&amp;layer=mapnik" style={{border: 'none', filter: 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)'}}></iframe>
+                      </div>
+                  </div>
+              )}
+
+              {/* TAB 3: USER MANAGEMENT (NAYA) */}
+              {activeTab === 'users' && (
+                  <div className="glass-card p-5 animate__animated animate__fadeIn">
+                      <h3 className="fw-bold text-gradient mb-4">👥 User Management</h3>
+                      <p className="text-muted mb-4">Monitor and manage all Riders and Captains on the platform.</p>
+                      
+                      <div className="table-responsive rounded-4 overflow-hidden border border-secondary">
+                          <table className="table table-dark table-hover mb-0">
+                              <thead className="table-active">
+                                  <tr>
+                                      <th className="py-3 px-4 text-purple">User ID</th>
+                                      <th className="py-3 px-4 text-purple">Name</th>
+                                      <th className="py-3 px-4 text-purple">Phone</th>
+                                      <th className="py-3 px-4 text-purple">Role</th>
+                                      <th className="py-3 px-4 text-purple">Status</th>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  <tr>
+                                      <td className="py-3 px-4">#1001</td>
+                                      <td className="py-3 px-4 fw-bold">Raj Tiwari</td>
+                                      <td className="py-3 px-4 text-muted">9988776655</td>
+                                      <td className="py-3 px-4"><span className="badge bg-purple px-3 py-2">Rider</span></td>
+                                      <td className="py-3 px-4"><span className="text-success fw-bold">● Active</span></td>
+                                  </tr>
+                                  <tr>
+                                      <td className="py-3 px-4">#1002</td>
+                                      <td className="py-3 px-4 fw-bold">Vikram Captain</td>
+                                      <td className="py-3 px-4 text-muted">8877665544</td>
+                                      <td className="py-3 px-4"><span className="badge bg-success text-dark px-3 py-2">Captain</span></td>
+                                      <td className="py-3 px-4"><span className="text-success fw-bold">● Active</span></td>
+                                  </tr>
+                                  <tr>
+                                      <td className="py-3 px-4">#1003</td>
+                                      <td className="py-3 px-4 fw-bold">Demo User</td>
+                                      <td className="py-3 px-4 text-muted">1122334455</td>
+                                      <td className="py-3 px-4"><span className="badge bg-purple px-3 py-2">Rider</span></td>
+                                      <td className="py-3 px-4"><span className="text-danger fw-bold">● Banned</span></td>
+                                  </tr>
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
+              )}
+
+              {/* TAB 4: SETTINGS (NAYA) */}
+              {activeTab === 'settings' && (
+                  <div className="glass-card p-5 animate__animated animate__fadeIn">
+                      <h3 className="fw-bold text-gradient mb-4">⚙️ Platform Settings</h3>
+                      <p className="text-muted mb-5">Configure core payment and security parameters.</p>
+                      
+                      <div className="row g-5">
+                          <div className="col-md-6">
+                              <label className="fw-bold text-white mb-3 fs-5">Platform Commission (%)</label>
+                              <input type="number" className="form-control py-3 fs-5 text-center" defaultValue="10" />
+                              <small className="text-muted mt-2 d-block">Percentage deducted from Captain's earnings.</small>
+                          </div>
+                          
+                          <div className="col-md-6">
+                              <label className="fw-bold text-white mb-3 fs-5">Demo Ride Fare (₹)</label>
+                              <input type="number" className="form-control py-3 fs-5 text-center" defaultValue="1" disabled />
+                              <small className="text-danger mt-2 d-block">Fixed amount for Administrator testing.</small>
+                          </div>
+                          
+                          <div className="col-12 mt-5">
+                              <div className="glass-card p-4 border-danger d-flex justify-content-between align-items-center">
+                                  <div>
+                                      <h5 className="text-white fw-bold mb-1">Accept New Registrations</h5>
+                                      <p className="text-muted mb-0">Toggle to stop new users from joining the app.</p>
+                                  </div>
+                                  <div className="form-check form-switch fs-2">
+                                      <input className="form-check-input" type="checkbox" defaultChecked style={{cursor: 'pointer'}}/>
+                                  </div>
+                              </div>
+                          </div>
+                          
+                          <div className="col-12 mt-5 text-end">
+                              <button className="btn btn-purple px-5 py-3 fw-bold fs-5 shadow-lg" onClick={() => alert("Settings Updated Successfully! ✅")}>
+                                  Save Configuration
+                              </button>
+                          </div>
                       </div>
                   </div>
               )}
