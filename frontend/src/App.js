@@ -3,15 +3,30 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-// NAYA: Live Map Imports
+// LIVE MAP IMPORTS
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 
-// Yahan aapka Render Backend URL aayega
-const SERVER_URL = "https://rideease-python.onrender.com"; 
+// ==========================================
+// 🛠️ HIDDEN BUG FIX: Leaflet Map Default Icons Fix 
+// ==========================================
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconUrl: markerIcon,
+    iconRetinaUrl: markerIcon2x,
+    shadowUrl: markerShadow,
+});
+// ==========================================
+
+// BOSS: AAPKA ASLI RENDER URL YAHAN HAI!
+const SERVER_URL = "https://rideease-4m7a.onrender.com"; 
 const socket = io(SERVER_URL, { autoConnect: false });
 
-// NAYA: Razorpay Loader Function
 const loadRazorpayScript = () => {
     return new Promise((resolve) => {
         const script = document.createElement("script");
@@ -70,7 +85,6 @@ export default function App() {
           letter-spacing: 0.5rem; 
       }
       
-      /* Glassmorphism - Premium Glass Effect */
       .glass-card {
           background: rgba(20, 20, 20, 0.6);
           backdrop-filter: blur(15px);
@@ -79,7 +93,6 @@ export default function App() {
           box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
       }
       
-      /* VIP Custom Classes */
       .text-purple { 
           color: var(--vip-purple) !important; 
       }
@@ -119,13 +132,11 @@ export default function App() {
           color: white !important; 
       }
       
-      /* Receipt dotted line */
       .receipt-line { 
           border-top: 2px dashed rgba(255,255,255,0.2); 
           margin: 15px 0; 
       }
       
-      /* Map Fix */
       .leaflet-container { 
           width: 100%; 
           height: 100%; 
