@@ -1,5 +1,5 @@
 # =========================================================
-# RIDEEASE - FULL PYTHON FLASK BACKEND
+# RIDEEASE - FULL PYTHON FLASK BACKEND (LIVE PAYMENT)
 # =========================================================
 
 from flask import Flask, request, jsonify
@@ -17,9 +17,11 @@ app.config['SECRET_KEY'] = 'vip_rideease_secret!'
 CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Razorpay Test Client Setup
-RAZORPAY_KEY_ID = 'rzp_test_dummykey123'
-RAZORPAY_KEY_SECRET = 'dummysecret123'
+# ==========================================
+# 💰 BOSS KI ASLI LIVE RAZORPAY KEYS 💰
+# ==========================================
+RAZORPAY_KEY_ID = 'rzp_live_SOMYlrgNhCBKBC'
+RAZORPAY_KEY_SECRET = 'ITWlO80s9IrX07C7cFEoSFG3'
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 active_rides = {}
