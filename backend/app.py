@@ -29,6 +29,7 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+# Database Tables Setup
 with get_db_connection() as conn:
     conn.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT, phone TEXT UNIQUE, 
@@ -38,7 +39,7 @@ with get_db_connection() as conn:
         captain_name TEXT, pickup TEXT, dropoff TEXT, amount INTEGER, 
         status TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
 
-# ---------------- APIs ----------------
+# ---------------- REST APIs ----------------
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -55,11 +56,14 @@ def register():
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
+    
+    # Admin Check
     if data.get('password'):
         if data['phone'] == 'admin' and data['password'] == 'admin123':
             return jsonify({'isNew': False, 'user': {'phone': 'Admin', 'role': 'admin', 'name': 'Super Admin'}})
         return jsonify({'error': 'Invalid credentials'}), 401
 
+    # User/Captain Check
     with get_db_connection() as conn:
         user = conn.execute('SELECT * FROM users WHERE phone = ?', (data['phone'],)).fetchone()
         if user:
@@ -102,17 +106,18 @@ def create_order():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ---------------- WebSockets ----------------
+# ---------------- WebSockets (Socket.io) ----------------
 
 @socketio.on('connect')
 def handle_connect():
-    pass
+    print("🔌 Client connected")
 
 @socketio.on('request_ride')
 def handle_request_ride(data):
     otp = str(random.randint(1000, 9999))
     full_ride = {**data, 'id': request.sid, 'otp': otp, 'status': 'pending'}
     active_rides[request.sid] = full_ride
+    
     emit('incoming_ride', full_ride, broadcast=True)
     emit('admin_update', {'type': 'new_ride', 'count': len(active_rides)}, broadcast=True)
 
