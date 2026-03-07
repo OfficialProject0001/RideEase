@@ -59,10 +59,10 @@ def register():
 def login():
     data = request.json
     
-    # 👑 BOSS KA NAYA ADMIN LOGIN 👑
+    # 👑 BOSS NITIN SHARMA KA NAYA ADMIN LOGIN 👑
     if data.get('password'):
-        if data['phone'] == 'Rohit01' and data['password'] == 'Rohit2580@':
-            return jsonify({'isNew': False, 'user': {'phone': 'Rohit01', 'role': 'admin', 'name': 'Boss Rohit'}})
+        if data['phone'] == 'Nitin01' and data['password'] == 'Nitin2580@':
+            return jsonify({'isNew': False, 'user': {'phone': 'Nitin01', 'role': 'admin', 'name': 'Boss Nitin Sharma'}})
         return jsonify({'error': 'Invalid credentials'}), 401
 
     # User/Captain Check
