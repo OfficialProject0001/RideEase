@@ -56,27 +56,66 @@ const loadRazorpayScript = () => {
 };
 
 // ==========================================
-// 🚖 NAYA: DYNAMIC VEHICLE ICON MAKER (Ola Style)
+// 🚖 NAYA: DYNAMIC VEHICLE ICON MAKER
 // ==========================================
 const createVehicleIcon = (emoji) => {
     return L.divIcon({
         html: `
             <div 
                 style="
-                    font-size: 30px; 
-                    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5)); 
+                    font-size: 32px; 
+                    filter: drop-shadow(0px 8px 6px rgba(0,0,0,0.5)); 
                     animation: floatBounce 1.5s infinite alternate; 
-                    text-shadow: 0 0 5px rgba(255,255,255,0.8);
+                    text-shadow: 0 0 10px rgba(255,255,255,0.9);
                 "
             >
                 ${emoji}
             </div>
         `,
         className: 'custom-vehicle-marker',
-        iconSize: [30, 30],
-        iconAnchor: [15, 15]
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
     });
 };
+
+// ==========================================
+// 🟢 PREMIUM UBER-STYLE PICKUP PIN
+// ==========================================
+const pickupIcon = L.divIcon({
+    html: `
+        <div style="
+            width: 18px; 
+            height: 18px; 
+            background-color: #0CAF60; 
+            border: 3px solid white; 
+            border-radius: 50%; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5), 0 0 15px rgba(12, 175, 96, 0.8); 
+            animation: pulseGreen 2s infinite;
+        "></div>
+    `,
+    className: 'custom-pickup-pin',
+    iconSize: [18, 18],
+    iconAnchor: [9, 9]
+});
+
+// ==========================================
+// 🔴 PREMIUM UBER-STYLE DROP PIN
+// ==========================================
+const dropIcon = L.divIcon({
+    html: `
+        <div style="
+            width: 18px; 
+            height: 18px; 
+            background-color: #F73164; 
+            border: 3px solid white; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5), 0 0 15px rgba(247, 49, 100, 0.8);
+        "></div>
+    `,
+    className: 'custom-drop-pin',
+    iconSize: [18, 18],
+    iconAnchor: [9, 9]
+});
+
 
 // ==========================================
 // MAIN APP COMPONENT STARTS HERE
@@ -166,7 +205,7 @@ export default function App() {
                     border-radius: 20px;
                     position: relative;
                     z-index: 1;
-                    background-color: #fff; 
+                    background-color: #f7f7f7; /* Smooth light background for map */
                 }
                 
                 .text-purple { 
@@ -227,11 +266,22 @@ export default function App() {
                     margin: 15px 0; 
                 }
                 
-                /* 🗺️ OLA STYLE MAP FIX (NO DARK INVERSION) */
+                /* 🗺️ PREMIUM MAP SETTINGS */
                 .leaflet-container { 
                     width: 100%; 
                     height: 100%; 
                     border-radius: 18px; 
+                }
+                
+                /* Remove map bottom logo for clean look */
+                .leaflet-control-attribution { 
+                    display: none !important; 
+                }
+
+                @keyframes pulseGreen { 
+                    0% { box-shadow: 0 0 0 0 rgba(12, 175, 96, 0.7); } 
+                    70% { box-shadow: 0 0 0 15px rgba(12, 175, 96, 0); } 
+                    100% { box-shadow: 0 0 0 0 rgba(12, 175, 96, 0); } 
                 }
 
                 @keyframes floatBounce { 
@@ -641,10 +691,10 @@ export default function App() {
         useEffect(() => {
             if (pickupCoords && selectedVehicle && rideState === 'select_vehicle') {
                 const drivers = [];
-                const numDrivers = Math.floor(Math.random() * 4) + 3; // 3 to 6 vehicles
+                const numDrivers = Math.floor(Math.random() * 4) + 3; 
                 
                 for (let i = 0; i < numDrivers; i++) {
-                    const latOffset = (Math.random() - 0.5) * 0.015; // 500m radius
+                    const latOffset = (Math.random() - 0.5) * 0.015; 
                     const lngOffset = (Math.random() - 0.5) * 0.015;
                     
                     drivers.push({
@@ -656,7 +706,7 @@ export default function App() {
                 }
                 setNearbyDrivers(drivers);
             } else {
-                setNearbyDrivers([]); // Clear when searching or accepted
+                setNearbyDrivers([]); 
             }
         }, [selectedVehicle, pickupCoords, rideState]);
 
@@ -952,30 +1002,28 @@ export default function App() {
                                     zoom={13} 
                                     style={{ height: "100%", width: "100%" }}
                                 >
-                                    {/* Standard Light OSM TileLayer for Ola Look */}
+                                    {/* 🗺️ PREMIUM CartoDB Voyager Light Map */}
                                     <TileLayer 
-                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
+                                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" 
                                     />
                                     
-                                    {/* Blue Route Polyline */}
+                                    {/* 🛣️ 3D Route Polyline (Outline Effect) */}
                                     {routeCoords.length > 0 && (
-                                        <Polyline 
-                                            positions={routeCoords} 
-                                            color="#007AFF" 
-                                            weight={6} 
-                                            opacity={0.8} 
-                                        />
+                                        <>
+                                            <Polyline positions={routeCoords} color="#000000" weight={7} opacity={0.6} />
+                                            <Polyline positions={routeCoords} color="#0564FF" weight={4} opacity={1} />
+                                        </>
                                     )}
                                     
-                                    {/* Pickup & Drop Pins */}
+                                    {/* 📍 Custom Pickup & Drop Pins */}
                                     {pickupCoords && (
-                                        <Marker position={pickupCoords}>
+                                        <Marker position={pickupCoords} icon={pickupIcon}>
                                             <Popup>🟢 Pickup: {pickupLoc}</Popup>
                                         </Marker>
                                     )}
                                     
                                     {dropCoords && (
-                                        <Marker position={dropCoords}>
+                                        <Marker position={dropCoords} icon={dropIcon}>
                                             <Popup>🔴 Drop: {dropLoc}</Popup>
                                         </Marker>
                                     )}
@@ -1556,17 +1604,15 @@ export default function App() {
                             style={{maxWidth:'650px'}}
                         >
                             <div className="mb-5 map-glow" style={{height: '250px'}}>
-                                <iframe 
-                                    width="100%" 
-                                    height="100%" 
-                                    frameBorder="0" 
-                                    scrolling="no" 
-                                    src="https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.9%2C73.1%2C19.3&amp;layer=mapnik" 
-                                    style={{
-                                        border: 'none', 
-                                        borderRadius: '18px'
-                                    }}
-                                ></iframe>
+                                <MapContainer 
+                                    center={[19.0760, 72.8777]} 
+                                    zoom={13} 
+                                    style={{ height: "100%", width: "100%" }}
+                                >
+                                    <TileLayer 
+                                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" 
+                                    />
+                                </MapContainer>
                             </div>
                             
                             {activeRide ? (
@@ -2009,14 +2055,15 @@ export default function App() {
                                 className="overflow-hidden shadow-lg map-glow" 
                                 style={{height: '500px', borderRadius:'24px'}}
                             >
-                                <iframe 
-                                    width="100%" 
-                                    height="100%" 
-                                    frameBorder="0" 
-                                    scrolling="no" 
-                                    src="https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.9%2C73.1%2C19.3&amp;layer=mapnik" 
-                                    style={{border: 'none'}}
-                                ></iframe>
+                                <MapContainer 
+                                    center={[19.0760, 72.8777]} 
+                                    zoom={13} 
+                                    style={{ height: "100%", width: "100%" }}
+                                >
+                                    <TileLayer 
+                                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" 
+                                    />
+                                </MapContainer>
                             </div>
                         </div>
                     )}
